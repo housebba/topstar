@@ -1,0 +1,13 @@
+syntax = "proto3";
+package topstar.mytoken.v1;
+
+import "amino/amino.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "topstar/x/mytoken/types";
+
+// Params defines the parameters for the module.
+message Params {
+  option (amino.name) = "topstar/x/mytoken/Params";
+  option (gogoproto.equal) = true;
+}

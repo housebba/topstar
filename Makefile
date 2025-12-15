@@ -59,6 +59,12 @@ install:
 
 .PHONY: all install
 
+run: install
+	@echo "--> running $(APPNAME)d"
+	@$(APPNAME)d start --log_level warn --api.enable=true --api.swagger=true
+
+.PHONY: run
+
 ##################
 ###  Protobuf  ###
 ##################

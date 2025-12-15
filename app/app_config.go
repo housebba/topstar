@@ -2,6 +2,8 @@ package app
 
 import (
 	"time"
+	_ "topstar/x/mytoken/module"
+	mytokenmoduletypes "topstar/x/mytoken/types"
 	_ "topstar/x/topstar/module"
 	topstarmoduletypes "topstar/x/topstar/types"
 
@@ -126,6 +128,7 @@ var (
 						ibcexported.ModuleName,
 						// chain modules
 						topstarmoduletypes.ModuleName,
+						mytokenmoduletypes.ModuleName,
 						// this line is used by starport scaffolding # stargate/app/beginBlockers
 					},
 					EndBlockers: []string{
@@ -135,6 +138,7 @@ var (
 						group.ModuleName,
 						// chain modules
 						topstarmoduletypes.ModuleName,
+						mytokenmoduletypes.ModuleName,
 						// this line is used by starport scaffolding # stargate/app/endBlockers
 					},
 					// The following is mostly only needed when ModuleName != StoreKey name.
@@ -172,6 +176,7 @@ var (
 						icatypes.ModuleName,
 						// chain modules
 						topstarmoduletypes.ModuleName,
+						mytokenmoduletypes.ModuleName,
 						// this line is used by starport scaffolding # stargate/app/initGenesis
 					},
 				}),
@@ -271,6 +276,10 @@ var (
 			{
 				Name:   topstarmoduletypes.ModuleName,
 				Config: appconfig.WrapAny(&topstarmoduletypes.Module{}),
+			},
+			{
+				Name:   mytokenmoduletypes.ModuleName,
+				Config: appconfig.WrapAny(&mytokenmoduletypes.Module{}),
 			},
 			// this line is used by starport scaffolding # stargate/app/moduleConfig
 		},

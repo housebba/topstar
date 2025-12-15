@@ -46,6 +46,7 @@ import (
 	ibckeeper "github.com/cosmos/ibc-go/v10/modules/core/keeper"
 
 	"topstar/docs"
+	mytokenmodulekeeper "topstar/x/mytoken/keeper"
 	topstarmodulekeeper "topstar/x/topstar/keeper"
 )
 
@@ -101,6 +102,7 @@ type App struct {
 	// simulation manager
 	sm            *module.SimulationManager
 	TopstarKeeper topstarmodulekeeper.Keeper
+	MytokenKeeper mytokenmodulekeeper.Keeper
 }
 
 func init() {
@@ -174,6 +176,7 @@ func New(
 		&app.CircuitBreakerKeeper,
 		&app.ParamsKeeper,
 		&app.TopstarKeeper,
+		&app.MytokenKeeper,
 	); err != nil {
 		panic(err)
 	}
