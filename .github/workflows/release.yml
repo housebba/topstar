@@ -74,6 +74,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # 배포 잡으로 파일을 전달하기 위해 아티팩트 업로드 추가
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: topstar-binary
+          path: release/topstar-linux-arm64.tar.gz
+
+
   deploy:
     needs: release
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
@@ -85,12 +93,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download Asset from Release
-        uses: dsaltares/fetch-gh-release-asset@master
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
         with:
-          version: 'latest'
-          file: 'topstar-linux-arm64.tar.gz'
-          token: ${{ secrets.GITHUB_TOKEN }}
+          name: topstar-binary
+
 
       - name: Create Deploy Directory via SSH
         uses: appleboy/ssh-action@master
