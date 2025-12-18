@@ -83,52 +83,84 @@ jobs:
           path: release/topstar-linux-arm64.tar.gz
 
 
-  deploy:
+  init-master:
     needs: release
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false # 한 서버가 실패해도 나머지는 계속 진행
-      matrix:
-        server_id: [1, 2, 3]
     steps:
-      - name: Download Build Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: topstar-binary
-
       - name: Install SSH Key
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           known_hosts: unnecessary
 
-      - name: Deploy to Server (Native Fast Mode)
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: topstar-binary
+
+      - name: Initialize Master Genesis (Server 1)
+        run: |
+          IP=${{ secrets.SERVER_1_IP }}
+          USER=${{ secrets.REMOTE_USER }}
+          ssh -o StrictHostKeyChecking=no $USER@$IP "mkdir -p ~/deploy"
+          scp -o StrictHostKeyChecking=no topstar-linux-arm64.tar.gz $USER@$IP:~/deploy/
+          ssh -o StrictHostKeyChecking=no $USER@$IP "cd ~/deploy && tar -xzf topstar-linux-arm64.tar.gz && chmod +x topstard"
+          ssh -o StrictHostKeyChecking=no $USER@$IP "~/deploy/topstard init node-01 --chain-id topstar-testnet-1 -o"
+          scp -o StrictHostKeyChecking=no $USER@$IP:~/.topstar/config/genesis.json ./master_genesis.json
+
+      - name: Upload Master Genesis
+        uses: actions/upload-artifact@v4
+        with:
+          name: master-genesis
+          path: master_genesis.json
+
+  deploy-nodes:
+    needs: [release, init-master]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        server_id: [1, 2, 3]
+    steps:
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: unnecessary
+
+      - name: Download Binary
+        uses: actions/download-artifact@v4
+        with:
+          name: topstar-binary
+
+      - name: Download Master Genesis
+        uses: actions/download-artifact@v4
+        with:
+          name: master-genesis
+
+      - name: Deploy and Sync
         run: |
           IP=${{ secrets[format('SERVER_{1}_IP', '', matrix.server_id)] }}
           USER=${{ secrets.REMOTE_USER }}
           
-          echo "� Deploying to $IP..."
-          
-          # 1. 서버 디렉토리 생성
+          echo "🚀 Deploying to $IP..."
           ssh -o StrictHostKeyChecking=no $USER@$IP "mkdir -p ~/deploy"
-          
-          # 2. 파일 전송 (네이티브 SCP는 매우 빠릅니다)
           scp -o StrictHostKeyChecking=no topstar-linux-arm64.tar.gz $USER@$IP:~/deploy/
           
-          # 3. 압축 해제 및 서비스 재시작 (원격 실행)
+          # 1. 초기화 및 바이너리 교체
           ssh -o StrictHostKeyChecking=no $USER@$IP << 'EOF'
             cd ~/deploy
             tar -xzvf topstar-linux-arm64.tar.gz
             chmod +x topstard
-            
-            if [ ! -f ~/.topstar/config/genesis.json ]; then
-              ./topstard init "node-${{ matrix.server_id }}" --chain-id topstar-1
-            fi
-            
-            ./topstard version
-            echo "✅ Deployment Successful!"
+            ./topstard init "node-${{ matrix.server_id }}" --chain-id topstar-testnet-1 -o
           EOF
+
+          # 2. 마스터 제네시스 주입 (모든 노드가 동일한 제네시스를 갖게 함)
+          scp -o StrictHostKeyChecking=no ./master_genesis.json $USER@$IP:~/.topstar/config/genesis.json
+          
+          ssh -o StrictHostKeyChecking=no $USER@$IP "~/deploy/topstard version && echo '✅ Deployment & Genesis Sync Successful!'"
+
+
 
 
 
