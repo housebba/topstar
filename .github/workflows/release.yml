@@ -176,21 +176,18 @@ jobs:
             
             # 서비스 파일 생성 (sed를 사용하여 모든 앞뒤 공백 제거 및 빈 줄 해결)
             cat <<'SEC' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | sudo tee /etc/systemd/system/topstard.service > /dev/null
-[Unit]
-Description=Topstar Node Daemon
-After=network-online.target
-[Service]
-User=$USER_NAME
-ExecStart=/home/$USER_NAME/deploy/topstard start
-Restart=always
-RestartSec=3
-LimitNOFILE=4096
-[Install]
-WantedBy=multi-user.target
-SEC
-
-
-
+            [Unit]
+            Description=Topstar Node Daemon
+            After=network-online.target
+            [Service]
+            User=$USER_NAME
+            ExecStart=/home/$USER_NAME/deploy/topstard start
+            Restart=always
+            RestartSec=3
+            LimitNOFILE=4096
+            [Install]
+            WantedBy=multi-user.target
+            SEC
 
             # 서비스 활성화 및 재시작
             sudo systemctl daemon-reload
