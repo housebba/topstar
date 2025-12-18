@@ -79,7 +79,15 @@ proto-gen:
 	@echo "Generating protobuf files..."
 	@ignite generate proto-go --yes
 
-.PHONY: proto-gen
+openapi-gen:
+	@echo "Generating OpenAPI files..."
+	@ignite generate openapi --yes
+
+proto: proto-gen openapi-gen
+
+.PHONY: proto-gen openapi-gen proto
+
+
 
 #################
 ###  Linting  ###

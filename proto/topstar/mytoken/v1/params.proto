@@ -10,4 +10,6 @@ option go_package = "topstar/x/mytoken/types";
 message Params {
   option (amino.name) = "topstar/x/mytoken/Params";
   option (gogoproto.equal) = true;
+
+  string mint_denom = 1;
 }

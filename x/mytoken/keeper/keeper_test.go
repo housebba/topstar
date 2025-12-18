@@ -18,6 +18,20 @@ import (
 	"topstar/x/mytoken/types"
 )
 
+type MockBankKeeper struct{}
+
+func (MockBankKeeper) SpendableCoins(context.Context, sdk.AccAddress) sdk.Coins { return sdk.Coins{} }
+func (MockBankKeeper) MintCoins(context.Context, string, sdk.Coins) error       { return nil }
+func (MockBankKeeper) SendCoinsFromModuleToAccount(context.Context, string, sdk.AccAddress, sdk.Coins) error {
+	return nil
+}
+func (MockBankKeeper) SendCoinsFromAccountToModule(context.Context, sdk.AccAddress, string, sdk.Coins) error {
+	return nil
+}
+func (MockBankKeeper) BurnCoins(context.Context, string, sdk.Coins) error {
+	return nil
+}
+
 type fixture struct {
 	ctx          context.Context
 	keeper       keeper.Keeper
@@ -40,6 +54,7 @@ func initFixture(t *testing.T) *fixture {
 		storeService,
 		encCfg.Codec,
 		addressCodec,
+		MockBankKeeper{},
 		authority,
 	)
 
