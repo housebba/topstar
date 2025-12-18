@@ -92,15 +92,23 @@ jobs:
           file: 'topstar-linux-arm64.tar.gz'
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Create Deploy Directory via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets[format('SERVER_{1}_IP', '', matrix.server_id)] }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: mkdir -p ~/deploy
+
       - name: Copy Binary to Servers via SCP
         uses: appleboy/scp-action@master
         with:
-          # 서버 인덱스에 따라 SERVER_1_IP, SERVER_2_IP 등을 동적으로 가져옵니다.
           host: ${{ secrets[format('SERVER_{1}_IP', '', matrix.server_id)] }}
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "topstar-linux-arm64.tar.gz"
-          target: "~/deploy"
+          target: "deploy"
+
 
       - name: Exec Deploy Script via SSH
         uses: appleboy/ssh-action@master
