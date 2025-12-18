@@ -193,11 +193,12 @@ jobs:
           # 2. 마스터 제네시스 주입
           scp -o StrictHostKeyChecking=no ./master_genesis.json $USER@$IP:~/.topstar/config/genesis.json
           
-          # 3. P2P 자동 연결 설정 (config.toml 수정)
+          # 3. P2P 자동 연결 설정 (config.toml 수정 - 정확히 해당 줄만 타겟팅)
           if [ "${{ matrix.server_id }}" != "1" ]; then
             echo "🔗 Connecting Server ${{ matrix.server_id }} to Master Peer: $MASTER_PEER"
-            ssh -o StrictHostKeyChecking=no $USER@$IP "sed -i 's/persistent_peers = .*/persistent_peers = \"$MASTER_PEER\"/' ~/.topstar/config/config.toml"
+            ssh -o StrictHostKeyChecking=no $USER@$IP "sed -i 's/^persistent_peers = .*/persistent_peers = \"$MASTER_PEER\"/' ~/.topstar/config/config.toml"
           fi
+
 
           
           # 3. systemd 서비스 파일 생성 및 노드 재시작 (상시 실행 설정)
