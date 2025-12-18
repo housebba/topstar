@@ -113,10 +113,11 @@ jobs:
             if [ ! -f ~/.topstar/config/genesis.json ]; then
               ./topstard init node-01 --chain-id topstar-testnet-1
               (echo "y") | ./topstard keys add admin --keyring-backend test
-              ./topstard add-genesis-account admin 1000000000stake --keyring-backend test
-              ./topstard gentx admin 100000000stake --chain-id topstar-testnet-1 --keyring-backend test
-              ./topstard collect-gentxs
+              ./topstard genesis add-genesis-account admin 1000000000stake --keyring-backend test
+              ./topstard genesis gentx admin 100000000stake --chain-id topstar-testnet-1 --keyring-backend test
+              ./topstard genesis collect-gentxs
             fi
+
           EOF
           
           # 완성된 마스터 제네시스를 로컬로 가져오기
