@@ -80,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        server_ip: [ '${{ secrets.SERVER_1_IP }}', '${{ secrets.SERVER_2_IP }}', '${{ secrets.SERVER_3_IP }}' ]
+        server_id: [1, 2, 3] # IP 대신 인덱스를 사용
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -92,11 +92,11 @@ jobs:
           file: 'topstar-linux-arm64.tar.gz'
           token: ${{ secrets.GITHUB_TOKEN }}
 
-
       - name: Copy Binary to Servers via SCP
         uses: appleboy/scp-action@master
         with:
-          host: ${{ matrix.server_ip }}
+          # 서버 인덱스에 따라 SERVER_1_IP, SERVER_2_IP 등을 동적으로 가져옵니다.
+          host: ${{ secrets[format('SERVER_{1}_IP', '', matrix.server_id)] }}
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "topstar-linux-arm64.tar.gz"
@@ -105,7 +105,7 @@ jobs:
       - name: Exec Deploy Script via SSH
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ matrix.server_ip }}
+          host: ${{ secrets[format('SERVER_{1}_IP', '', matrix.server_id)] }}
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
@@ -116,12 +116,11 @@ jobs:
             
             # 노드가 설치되어 있는지 확인 후 초기화 (필요시)
             if [ ! -f ~/.topstar/config/genesis.json ]; then
-              ./topstard init "node-${{ matrix.server_ip }}" --chain-id topstar-1
+              ./topstard init "node-${{ matrix.server_id }}" --chain-id topstar-1
             fi
             
-            # 여기서 노드 실행 방식은 나중에 서비스(systemd)로 등록하는 것을 권장합니다.
-            # 지금은 배포 성공 확인을 위해 바이너리 위치만 확인합니다.
             ./topstard version
+
 
 
 
