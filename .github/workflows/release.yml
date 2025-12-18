@@ -70,9 +70,10 @@ jobs:
           files: |
             release/topstar-linux-arm64.tar.gz
             release/sha256sum.txt
-          prerelease: true
+          prerelease: false # 정식 릴리스로 설정하여 latest 태그 활성화
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
       # 배포 잡으로 파일을 전달하기 위해 아티팩트 업로드 추가
       - name: Upload Build Artifact
@@ -91,34 +92,45 @@ jobs:
       matrix:
         server_id: [1, 2, 3]
     steps:
-      - name: Deploy to Server via SSH + Curl
-        uses: appleboy/ssh-action@master
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
         with:
-          host: ${{ secrets[format('SERVER_{1}_IP', '', matrix.server_id)] }}
-          username: ${{ secrets.REMOTE_USER }}
+          name: topstar-binary
+
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
+        with:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            mkdir -p ~/deploy
+          known_hosts: unnecessary
+
+      - name: Deploy to Server (Native Fast Mode)
+        run: |
+          IP=${{ secrets[format('SERVER_{1}_IP', '', matrix.server_id)] }}
+          USER=${{ secrets.REMOTE_USER }}
+          
+          echo "� Deploying to $IP..."
+          
+          # 1. 서버 디렉토리 생성
+          ssh -o StrictHostKeyChecking=no $USER@$IP "mkdir -p ~/deploy"
+          
+          # 2. 파일 전송 (네이티브 SCP는 매우 빠릅니다)
+          scp -o StrictHostKeyChecking=no topstar-linux-arm64.tar.gz $USER@$IP:~/deploy/
+          
+          # 3. 압축 해제 및 서비스 재시작 (원격 실행)
+          ssh -o StrictHostKeyChecking=no $USER@$IP << 'EOF'
             cd ~/deploy
-            
-            # 1. 기존 파일 삭제 및 GitHub Release에서 직접 다운로드 (초고속)
-            # Authorization 헤더를 넣어 프라이빗 레포인 경우에도 작동하게 합니다.
-            # latest 태그의 파일을 가져옵니다.
-            rm -f topstar-linux-arm64.tar.gz
-            curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                 -O https://github.com/${{ github.repository }}/releases/download/latest/topstar-linux-arm64.tar.gz
-            
-            # 2. 압축 해제 및 권한 부여
             tar -xzvf topstar-linux-arm64.tar.gz
             chmod +x topstard
             
-            # 3. 노드 설정 및 버전 확인
             if [ ! -f ~/.topstar/config/genesis.json ]; then
               ./topstard init "node-${{ matrix.server_id }}" --chain-id topstar-1
             fi
             
             ./topstard version
-            echo "🚀 Server ${{ matrix.server_id }} 배포 성공!"
+            echo "✅ Deployment Successful!"
+          EOF
+
+
 
 
 
