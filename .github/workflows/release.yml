@@ -170,7 +170,38 @@ jobs:
           # 2. 마스터 제네시스 주입 (모든 노드가 동일한 제네시스를 갖게 함)
           scp -o StrictHostKeyChecking=no ./master_genesis.json $USER@$IP:~/.topstar/config/genesis.json
           
-          ssh -o StrictHostKeyChecking=no $USER@$IP "~/deploy/topstard version && echo '✅ Deployment & Genesis Sync Successful!'"
+          # 3. systemd 서비스 파일 생성 및 노드 재시작 (상시 실행 설정)
+          ssh -o StrictHostKeyChecking=no $USER@$IP << 'EOF'
+            USER_NAME=$(whoami)
+            
+            # 서비스 파일 생성
+            sudo tee /etc/systemd/system/topstard.service > /dev/null <<SEC
+            [Unit]
+            Description=Topstar Node Daemon
+            After=network-online.target
+            
+            [Service]
+            User=$USER_NAME
+            ExecStart=/home/$USER_NAME/deploy/topstard start
+            Restart=always
+            RestartSec=3
+            LimitNOFILE=4096
+            
+            [Install]
+            WantedBy=multi-user.target
+            SEC
+
+            # 서비스 활성화 및 재시작
+            sudo systemctl daemon-reload
+            sudo systemctl enable topstard
+            sudo systemctl restart topstard
+            
+            # 상태 확인
+            sleep 2
+            sudo systemctl is-active topstard
+            echo "✅ Topstard Service is now running and managed by systemd!"
+          EOF
+
 
 
 
