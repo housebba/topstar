@@ -87,37 +87,11 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false # 한 서버가 실패해도 나머지는 계속 진행
       matrix:
-        server_id: [1, 2, 3] # IP 대신 인덱스를 사용
+        server_id: [1, 2, 3]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download Build Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: topstar-binary
-
-
-      - name: Create Deploy Directory via SSH
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets[format('SERVER_{1}_IP', '', matrix.server_id)] }}
-          username: ${{ secrets.REMOTE_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: mkdir -p ~/deploy
-
-      - name: Copy Binary to Servers via SCP
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets[format('SERVER_{1}_IP', '', matrix.server_id)] }}
-          username: ${{ secrets.REMOTE_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "topstar-linux-arm64.tar.gz"
-          target: "deploy"
-
-
-      - name: Exec Deploy Script via SSH
+      - name: Deploy to Server via SSH + Curl
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets[format('SERVER_{1}_IP', '', matrix.server_id)] }}
@@ -126,15 +100,26 @@ jobs:
           script: |
             mkdir -p ~/deploy
             cd ~/deploy
+            
+            # 1. 기존 파일 삭제 및 GitHub Release에서 직접 다운로드 (초고속)
+            # Authorization 헤더를 넣어 프라이빗 레포인 경우에도 작동하게 합니다.
+            # latest 태그의 파일을 가져옵니다.
+            rm -f topstar-linux-arm64.tar.gz
+            curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                 -O https://github.com/${{ github.repository }}/releases/download/latest/topstar-linux-arm64.tar.gz
+            
+            # 2. 압축 해제 및 권한 부여
             tar -xzvf topstar-linux-arm64.tar.gz
             chmod +x topstard
             
-            # 노드가 설치되어 있는지 확인 후 초기화 (필요시)
+            # 3. 노드 설정 및 버전 확인
             if [ ! -f ~/.topstar/config/genesis.json ]; then
               ./topstard init "node-${{ matrix.server_id }}" --chain-id topstar-1
             fi
             
             ./topstard version
+            echo "🚀 Server ${{ matrix.server_id }} 배포 성공!"
+
 
 
 
