@@ -14,13 +14,15 @@
 # default branch.
 on: 
   push:
-  workflow_dispatch: # 버튼 클릭으로 실행 가능하게 추가
+    tags:
+      - 'v*'
+  workflow_dispatch:
 
 permissions:
-  contents: write # 릴리스 생성을 위한 권한 추가
+  contents: write
 
 jobs:
-  might_release:
+  release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -28,35 +30,48 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Prepare Release Variables
-        id: vars
-        uses: ignite/cli/actions/release/vars@main
-
-      - name: Issue Release Assets
-        uses: ignite/cli/actions/cli@main
-        if: ${{ steps.vars.outputs.should_release == 'true' || github.event_name == 'workflow_dispatch' }}
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          args: chain build --release --release.prefix ${{ steps.vars.outputs.tarball_prefix }} -t linux:arm64 -y
-        env:
-          DO_NOT_TRACK: 1
-          GOFLAGS: "-buildvcs=false"
+          go-version: '1.25'
+          cache: true
 
-      - name: Delete the "latest" Release
+      - name: Build Binary
+        run: |
+          mkdir -p release
+          # LDFLAGS에 버전을 주입하는 것은 코어 개발의 정석입니다.
+          VERSION=${{ github.ref_name }}
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then VERSION="latest"; fi
+          
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build \
+            -ldflags "-X github.com/cosmos/cosmos-sdk/version.Version=$VERSION" \
+            -o release/topstard ./cmd/topstard/main.go
+
+      - name: Package Assets
+        run: |
+          cd release
+          tar -czvf topstar-linux-arm64.tar.gz topstard
+          # 체크섬 파일 생성 (보안 및 무결성 증명 - 포트폴리오 가산점)
+          sha256sum topstar-linux-arm64.tar.gz > sha256sum.txt
+
+      - name: Delete existing "latest" Release
+        if: github.event_name == 'workflow_dispatch' || github.ref_name == 'main'
         uses: dev-drprasad/delete-tag-and-release@v0.2.1
-        if: ${{ (steps.vars.outputs.is_release_type_latest == 'true' || github.event_name == 'workflow_dispatch') }}
         with:
-          tag_name: ${{ steps.vars.outputs.tag_name || 'latest' }}
+          tag_name: latest
           delete_release: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish the Release
+      - name: Publish Release
         uses: softprops/action-gh-release@v1
-        if: ${{ steps.vars.outputs.should_release == 'true' || github.event_name == 'workflow_dispatch' }}
         with:
-          tag_name: ${{ steps.vars.outputs.tag_name || 'latest' }}
-          files: release/*
+          tag_name: ${{ github.ref_name == 'main' && 'latest' || github.ref_name }}
+          files: |
+            release/topstar-linux-arm64.tar.gz
+            release/sha256sum.txt
           prerelease: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
