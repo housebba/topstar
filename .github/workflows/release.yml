@@ -109,23 +109,30 @@ jobs:
             cd ~/deploy
             tar -xzf topstar-linux-arm64.tar.gz && chmod +x topstard
             
-            # 설정 파일이 없을 때만 단 한 번 초기화 및 검증인 설정
+            # 1. 초기화 (데이터가 없을 때만 실행)
             if [ ! -f ~/.topstar/config/genesis.json ]; then
               ./topstard init node-01 --chain-id topstar-testnet-1
+              
+              # 2. 키 생성 (반드시 --keyring-backend test 명시)
               (echo "y") | ./topstard keys add admin --keyring-backend test
+              
+              # 3. 제네시스 계정 설정
               ./topstard genesis add-genesis-account admin 1000000000stake --keyring-backend test
-              ./topstard genesis gentx admin 100000000stake --chain-id topstar-testnet-1          # 5. Gentx 수집하여 최종 genesis.json 완성
-            ./topstard genesis collect-gentxs
+              
+              # 4. 검증인 선언 (Gentx) - 여기서 키를 못 찾지 않게 백엔드 명시가 필수!
+              ./topstard genesis gentx admin 100000000stake --chain-id topstar-testnet-1 --keyring-backend test
+              
+              # 5. 수집
+              ./topstard genesis collect-gentxs
             fi
-
           EOF
           
-          # 6. 서버 1번의 Node ID 추출 (P2P 연결용)
+          # 6. 서버 1번의 Node ID 추출
           NODE_ID=$(ssh -o StrictHostKeyChecking=no $USER@$IP "~/deploy/topstard tendermint show-node-id")
           echo "$NODE_ID@$IP:26656" > master_peer.txt
           
-          # 완성된 마스터 제네시스를 로컬로 가져오기
           scp -o StrictHostKeyChecking=no $USER@$IP:~/.topstar/config/genesis.json ./master_genesis.json
+
 
 
 
