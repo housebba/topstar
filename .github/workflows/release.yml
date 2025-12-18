@@ -74,4 +74,54 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  deploy:
+    needs: release
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        server_ip: [ '${{ secrets.SERVER_1_IP }}', '${{ secrets.SERVER_2_IP }}', '${{ secrets.SERVER_3_IP }}' ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Asset from Release
+        uses: dsaltares/fetch-gh-release-asset@master
+        with:
+          version: 'latest'
+          file: 'topstar-linux-arm64.tar.gz'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+
+      - name: Copy Binary to Servers via SCP
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ matrix.server_ip }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "topstar-linux-arm64.tar.gz"
+          target: "~/deploy"
+
+      - name: Exec Deploy Script via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ matrix.server_ip }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            mkdir -p ~/deploy
+            cd ~/deploy
+            tar -xzvf topstar-linux-arm64.tar.gz
+            chmod +x topstard
+            
+            # 노드가 설치되어 있는지 확인 후 초기화 (필요시)
+            if [ ! -f ~/.topstar/config/genesis.json ]; then
+              ./topstard init "node-${{ matrix.server_ip }}" --chain-id topstar-1
+            fi
+            
+            # 여기서 노드 실행 방식은 나중에 서비스(systemd)로 등록하는 것을 권장합니다.
+            # 지금은 배포 성공 확인을 위해 바이너리 위치만 확인합니다.
+            ./topstard version
+
+
 
