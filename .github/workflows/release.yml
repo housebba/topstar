@@ -199,9 +199,17 @@ jobs:
             ssh -o StrictHostKeyChecking=no $USER@$IP "sed -i 's/^persistent_peers = .*/persistent_peers = \"$MASTER_PEER\"/' ~/.topstar/config/config.toml"
           fi
 
-
+          # 4. OS 방화벽 오픈 (OCI Ubuntu용 iptables 설정)
+          ssh -o StrictHostKeyChecking=no $USER@$IP << 'EOF'
+            sudo iptables -I INPUT 6 -p tcp --dport 26656 -j ACCEPT
+            sudo iptables -I INPUT 6 -p tcp --dport 26657 -j ACCEPT
+            sudo iptables -I INPUT 6 -p tcp --dport 1317 -j ACCEPT
+            # 변경사항 저장 (패키지가 설치되어 있는 경우)
+            sudo netfilter-persistent save 2>/dev/null || true
+          EOF
           
-          # 3. systemd 서비스 파일 생성 및 노드 재시작 (상시 실행 설정)
+          # 5. systemd 서비스 파일 생성 및 노드 재시작 (상시 실행 설정)
+
           ssh -o StrictHostKeyChecking=no $USER@$IP << 'EOF'
             USER_NAME=$(whoami)
             
