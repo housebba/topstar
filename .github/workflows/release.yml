@@ -174,20 +174,8 @@ jobs:
           ssh -o StrictHostKeyChecking=no $USER@$IP << 'EOF'
             USER_NAME=$(whoami)
             
-            # 서비스 파일 생성 (sed를 사용하여 모든 앞뒤 공백 제거 및 빈 줄 해결)
-            cat <<'SEC' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | sudo tee /etc/systemd/system/topstard.service > /dev/null
-            [Unit]
-            Description=Topstar Node Daemon
-            After=network-online.target
-            [Service]
-            User=$USER_NAME
-            ExecStart=/home/$USER_NAME/deploy/topstard start
-            Restart=always
-            RestartSec=3
-            LimitNOFILE=4096
-            [Install]
-            WantedBy=multi-user.target
-            SEC
+            # 서비스 파일 생성 (가장 확실한 printf 방식 사용)
+            sudo printf "[Unit]\nDescription=Topstar Node Daemon\nAfter=network-online.target\n\n[Service]\nUser=%s\nExecStart=/home/%s/deploy/topstard start\nRestart=always\nRestartSec=3\nLimitNOFILE=4096\n\n[Install]\nWantedBy=multi-user.target\n" "$USER_NAME" "$USER_NAME" | sudo tee /etc/systemd/system/topstard.service > /dev/null
 
             # 서비스 활성화 및 재시작
             sudo systemctl daemon-reload
@@ -198,7 +186,6 @@ jobs:
             sleep 2
             sudo systemctl is-active topstard
             echo "✅ Topstard Service is now running and managed by systemd!"
-          EOF
 
 
 
