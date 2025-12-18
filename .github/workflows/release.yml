@@ -185,7 +185,8 @@ jobs:
             USER_NAME=$(whoami)
             
             # 서비스 파일 생성 (가장 확실한 printf 방식 사용)
-            sudo printf "[Unit]\nDescription=Topstar Node Daemon\nAfter=network-online.target\n\n[Service]\nUser=%s\nExecStart=/home/%s/deploy/topstard start\nRestart=always\nRestartSec=3\nLimitNOFILE=4096\n\n[Install]\nWantedBy=multi-user.target\n" "$USER_NAME" "$USER_NAME" | sudo tee /etc/systemd/system/topstard.service > /dev/null
+            sudo printf "[Unit]\nDescription=Topstar Node Daemon\nAfter=network-online.target\n\n[Service]\nUser=%s\nExecStart=/home/%s/deploy/topstard start --minimum-gas-prices=0stake\nRestart=always\nRestartSec=3\nLimitNOFILE=4096\n\n[Install]\nWantedBy=multi-user.target\n" "$USER_NAME" "$USER_NAME" | sudo tee /etc/systemd/system/topstard.service > /dev/null
+
 
             # 서비스 활성화 및 재시작
             sudo systemctl daemon-reload
