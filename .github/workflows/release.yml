@@ -114,22 +114,28 @@ jobs:
               ./topstard init node-01 --chain-id topstar-testnet-1
               (echo "y") | ./topstard keys add admin --keyring-backend test
               ./topstard genesis add-genesis-account admin 1000000000stake --keyring-backend test
-              ./topstard genesis gentx admin 100000000stake --chain-id topstar-testnet-1 --keyring-backend test
-              ./topstard genesis collect-gentxs
+              ./topstard genesis gentx admin 100000000stake --chain-id topstar-testnet-1          # 5. Gentx 수집하여 최종 genesis.json 완성
+            ./topstard genesis collect-gentxs
             fi
 
           EOF
+          
+          # 6. 서버 1번의 Node ID 추출 (P2P 연결용)
+          NODE_ID=$(ssh -o StrictHostKeyChecking=no $USER@$IP "~/deploy/topstard tendermint show-node-id")
+          echo "$NODE_ID@$IP:26656" > master_peer.txt
           
           # 완성된 마스터 제네시스를 로컬로 가져오기
           scp -o StrictHostKeyChecking=no $USER@$IP:~/.topstar/config/genesis.json ./master_genesis.json
 
 
 
-      - name: Upload Master Genesis
+      - name: Upload Master Info (Genesis & Peer)
         uses: actions/upload-artifact@v4
         with:
-          name: master-genesis
-          path: master_genesis.json
+          name: master-info
+          path: |
+            master_genesis.json
+            master_peer.txt
 
   deploy-nodes:
     needs: [release, init-master]
@@ -150,15 +156,16 @@ jobs:
         with:
           name: topstar-binary
 
-      - name: Download Master Genesis
+      - name: Download Master Info
         uses: actions/download-artifact@v4
         with:
-          name: master-genesis
+          name: master-info
 
       - name: Deploy and Sync
         run: |
           IP=${{ secrets[format('SERVER_{1}_IP', '', matrix.server_id)] }}
           USER=${{ secrets.REMOTE_USER }}
+          MASTER_PEER=$(cat master_peer.txt)
           
           echo "🚀 Deploying to $IP..."
           ssh -o StrictHostKeyChecking=no $USER@$IP "mkdir -p ~/deploy"
@@ -176,9 +183,15 @@ jobs:
             fi
           EOF
 
-
-          # 2. 마스터 제네시스 주입 (모든 노드가 동일한 제네시스를 갖게 함)
+          # 2. 마스터 제네시스 주입
           scp -o StrictHostKeyChecking=no ./master_genesis.json $USER@$IP:~/.topstar/config/genesis.json
+          
+          # 3. P2P 자동 연결 설정 (config.toml 수정)
+          if [ "${{ matrix.server_id }}" != "1" ]; then
+            echo "🔗 Connecting Server ${{ matrix.server_id }} to Master Peer: $MASTER_PEER"
+            ssh -o StrictHostKeyChecking=no $USER@$IP "sed -i 's/persistent_peers = .*/persistent_peers = \"$MASTER_PEER\"/' ~/.topstar/config/config.toml"
+          fi
+
           
           # 3. systemd 서비스 파일 생성 및 노드 재시작 (상시 실행 설정)
           ssh -o StrictHostKeyChecking=no $USER@$IP << 'EOF'
