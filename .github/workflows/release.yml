@@ -105,8 +105,15 @@ jobs:
           ssh -o StrictHostKeyChecking=no $USER@$IP "mkdir -p ~/deploy"
           scp -o StrictHostKeyChecking=no topstar-linux-arm64.tar.gz $USER@$IP:~/deploy/
           ssh -o StrictHostKeyChecking=no $USER@$IP "cd ~/deploy && tar -xzf topstar-linux-arm64.tar.gz && chmod +x topstard"
-          ssh -o StrictHostKeyChecking=no $USER@$IP "~/deploy/topstard init node-01 --chain-id topstar-testnet-1 -o"
+          
+          # 파일이 없을 때만 마스터 제네시스 생성
+          ssh -o StrictHostKeyChecking=no $USER@$IP << 'EOF'
+            if [ ! -f ~/.topstar/config/genesis.json ]; then
+              ~/deploy/topstard init node-01 --chain-id topstar-testnet-1
+            fi
+          EOF
           scp -o StrictHostKeyChecking=no $USER@$IP:~/.topstar/config/genesis.json ./master_genesis.json
+
 
       - name: Upload Master Genesis
         uses: actions/upload-artifact@v4
@@ -152,8 +159,13 @@ jobs:
             cd ~/deploy
             tar -xzvf topstar-linux-arm64.tar.gz
             chmod +x topstard
-            ./topstard init "node-${{ matrix.server_id }}" --chain-id topstar-testnet-1 -o
+            
+            # 파일이 없을 때만 초기화 (기존 키 보존)
+            if [ ! -f ~/.topstar/config/genesis.json ]; then
+              ./topstard init "node-${{ matrix.server_id }}" --chain-id topstar-testnet-1
+            fi
           EOF
+
 
           # 2. 마스터 제네시스 주입 (모든 노드가 동일한 제네시스를 갖게 함)
           scp -o StrictHostKeyChecking=no ./master_genesis.json $USER@$IP:~/.topstar/config/genesis.json
