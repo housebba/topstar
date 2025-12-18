@@ -174,22 +174,23 @@ jobs:
           ssh -o StrictHostKeyChecking=no $USER@$IP << 'EOF'
             USER_NAME=$(whoami)
             
-            # 서비스 파일 생성
+            # 서비스 파일 생성 (들여쓰기 절대 금지!)
             sudo tee /etc/systemd/system/topstard.service > /dev/null <<SEC
-            [Unit]
-            Description=Topstar Node Daemon
-            After=network-online.target
-            
-            [Service]
-            User=$USER_NAME
-            ExecStart=/home/$USER_NAME/deploy/topstard start
-            Restart=always
-            RestartSec=3
-            LimitNOFILE=4096
-            
-            [Install]
-            WantedBy=multi-user.target
-            SEC
+[Unit]
+Description=Topstar Node Daemon
+After=network-online.target
+
+[Service]
+User=$USER_NAME
+ExecStart=/home/$USER_NAME/deploy/topstard start
+Restart=always
+RestartSec=3
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target
+SEC
+
 
             # 서비스 활성화 및 재시작
             sudo systemctl daemon-reload
