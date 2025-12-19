@@ -14,25 +14,36 @@ const registry = new Registry([...defaultRegistryTypes, ...mytokenMsgTypes]);
 const CONFIG = {
     CHAIN_ID: 'topstar-testnet-1',
     DENOM: 'umytoken',
-    // CI/CD 환경 변수 또는 로컬 기본값 사용
-    RPC: import.meta.env.VITE_RPC_URL || 'http://localhost:26657',
-    API: import.meta.env.VITE_API_URL || 'http://localhost:1317',
+    // 환경 변수가 'http://:26657' 처럼 불완전하게 들어오는 경우를 방지
+    RPC: (import.meta.env.VITE_RPC_URL && import.meta.env.VITE_RPC_URL.length > 12)
+        ? import.meta.env.VITE_RPC_URL
+        : 'http://localhost:26657',
+
+    API: (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.length > 12)
+        ? import.meta.env.VITE_API_URL
+        : 'http://localhost:1317',
 
     NODES: [
         {
             id: 'node-01',
             name: 'Validator Node 01',
-            url: import.meta.env.VITE_NODE1_URL || 'http://localhost:26657'
+            url: (import.meta.env.VITE_NODE1_URL && import.meta.env.VITE_NODE1_URL.length > 12)
+                ? import.meta.env.VITE_NODE1_URL
+                : 'http://localhost:26657'
         },
         {
             id: 'node-02',
             name: 'Validator Node 02',
-            url: import.meta.env.VITE_NODE2_URL || 'http://localhost:26657'
+            url: (import.meta.env.VITE_NODE2_URL && import.meta.env.VITE_NODE2_URL.length > 12)
+                ? import.meta.env.VITE_NODE2_URL
+                : 'http://localhost:26657'
         },
         {
             id: 'node-03',
             name: 'Validator Node 03',
-            url: import.meta.env.VITE_NODE3_URL || 'http://localhost:26657'
+            url: (import.meta.env.VITE_NODE3_URL && import.meta.env.VITE_NODE3_URL.length > 12)
+                ? import.meta.env.VITE_NODE3_URL
+                : 'http://localhost:26657'
         }
     ],
 
@@ -58,7 +69,9 @@ const interact = {
     cosmjsReady: false,
 
     async init() {
+        console.log('🌐 Current Config:', CONFIG);
         this.log('🚀 초기화 시작...', 'system');
+        this.log(`📡 연결 대상: ${CONFIG.RPC}`, 'system');
 
         try {
             for (const [key, account] of Object.entries(CONFIG.ACCOUNTS)) {
