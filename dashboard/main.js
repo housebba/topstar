@@ -9,17 +9,18 @@ const registry = new Registry([...defaultRegistryTypes, ...mytokenMsgTypes]);
 
 
 // ============================================
-// CONFIG
+// CONFIG & VERSION
 // ============================================
+const VERSION = '1.0.3';
 const CONFIG = {
     CHAIN_ID: 'topstar-testnet-1',
     DENOM: 'umytoken',
-    // 환경 변수가 'http://:26657' 처럼 불완전하게 들어오는 경우를 방지
-    RPC: (import.meta.env.VITE_RPC_URL && import.meta.env.VITE_RPC_URL.length > 12)
+    // 안전한 주소 로딩 로직
+    RPC: (typeof import.meta.env.VITE_RPC_URL === 'string' && import.meta.env.VITE_RPC_URL.length > 10)
         ? import.meta.env.VITE_RPC_URL
         : 'http://localhost:26657',
 
-    API: (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.length > 12)
+    API: (typeof import.meta.env.VITE_API_URL === 'string' && import.meta.env.VITE_API_URL.length > 10)
         ? import.meta.env.VITE_API_URL
         : 'http://localhost:1317',
 
@@ -69,9 +70,11 @@ const interact = {
     cosmjsReady: false,
 
     async init() {
-        console.log('🌐 Current Config:', CONFIG);
-        this.log('🚀 초기화 시작...', 'system');
-        this.log(`📡 연결 대상: ${CONFIG.RPC}`, 'system');
+        console.log(`%c 🚀 TOPSTAR Dashboard v${VERSION} `, 'background: #222; color: #bada55; padding: 5px;');
+        console.log('📡 RPC:', CONFIG.RPC);
+        console.log('📡 API:', CONFIG.API);
+
+        this.log(`🚀 시스템 초기화 중... (v${VERSION})`, 'system');
 
         try {
             for (const [key, account] of Object.entries(CONFIG.ACCOUNTS)) {
@@ -123,27 +126,41 @@ const interact = {
     },
 
     async updateBalances() {
-        try {
-            // RPC(26657) 기반의 읽기 전용 클라이언트 생성
-            const client = await StargateClient.connect(CONFIG.RPC);
+        for (const [key, account] of Object.entries(CONFIG.ACCOUNTS)) {
+            if (!account.address) continue;
 
-            for (const [key, account] of Object.entries(CONFIG.ACCOUNTS)) {
-                if (!account.address) continue;
+            let amount = 0;
+            let success = false;
+
+            // 시도 1: RPC (StargateClient) - 가장 정확함
+            try {
+                const client = await StargateClient.connect(CONFIG.RPC);
+                const balance = await client.getBalance(account.address, CONFIG.DENOM);
+                amount = balance ? parseInt(balance.amount) : 0;
+                success = true;
+            } catch (rpcError) {
+                // 시도 2: REST API (Fetch) - RPC가 Mixed Content로 막힐 때의 백업
                 try {
-                    // StargateClient의 getBalance 함수 사용
-                    const balance = await client.getBalance(account.address, CONFIG.DENOM);
-                    const amount = balance ? parseInt(balance.amount) : 0;
-
-                    const amtElem = document.querySelector(`#user-${key} .amount`);
-                    if (amtElem) amtElem.textContent = amount.toLocaleString();
-                } catch (e) {
-                    console.warn(`${key} 잔액 조회 실패:`, e.message);
+                    const response = await fetch(`${CONFIG.API}/cosmos/bank/v1beta1/balances/${account.address}/by_denom?denom=${CONFIG.DENOM}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        amount = data.balance ? parseInt(data.balance.amount) : 0;
+                        success = true;
+                    }
+                } catch (apiError) {
+                    // 둘 다 실패
                 }
             }
-        } catch (e) {
-            console.error('RPC 서버 연결 실패:', e.message);
+
+            if (success) {
+                const amtElem = document.querySelector(`#user-${key} .amount`);
+                if (amtElem) amtElem.textContent = amount.toLocaleString();
+            } else {
+                console.warn(`${key} 잔액 업데이트 실패 (RPC/API 모두 응답 없음)`);
+            }
         }
     },
+
 
 
     async mint(userKey) {
