@@ -9,41 +9,29 @@ window.Buffer = Buffer;
 window.process = { env: {} };
 
 // Registry 설정
-const VERSION = '1.0.6';
 const registry = new Registry([...defaultRegistryTypes, ...mytokenMsgTypes]);
+
 const CONFIG = {
     CHAIN_ID: 'topstar-testnet-1',
     DENOM: 'umytoken',
-    // 실제 IP 또는 도메인이 들어온 경우에만 사용하도록 강화
-    RPC: (typeof import.meta.env.VITE_RPC_URL === 'string' && import.meta.env.VITE_RPC_URL.includes('.'))
-        ? import.meta.env.VITE_RPC_URL
-        : 'http://localhost:26657',
-
-    API: (typeof import.meta.env.VITE_API_URL === 'string' && import.meta.env.VITE_API_URL.includes('.'))
-        ? import.meta.env.VITE_API_URL
-        : 'http://localhost:1317',
+    RPC: import.meta.env.VITE_RPC_URL || 'http://localhost:26657',
+    API: import.meta.env.VITE_API_URL || 'http://localhost:1317',
 
     NODES: [
         {
             id: 'node-01',
             name: 'Validator Node 01',
-            url: (import.meta.env.VITE_NODE1_URL && import.meta.env.VITE_NODE1_URL.length > 12)
-                ? import.meta.env.VITE_NODE1_URL
-                : 'http://localhost:26657'
+            url: import.meta.env.VITE_NODE1_URL || 'http://localhost:26657'
         },
         {
             id: 'node-02',
             name: 'Validator Node 02',
-            url: (import.meta.env.VITE_NODE2_URL && import.meta.env.VITE_NODE2_URL.length > 12)
-                ? import.meta.env.VITE_NODE2_URL
-                : 'http://localhost:26657'
+            url: import.meta.env.VITE_NODE2_URL || 'http://localhost:26657'
         },
         {
             id: 'node-03',
             name: 'Validator Node 03',
-            url: (import.meta.env.VITE_NODE3_URL && import.meta.env.VITE_NODE3_URL.length > 12)
-                ? import.meta.env.VITE_NODE3_URL
-                : 'http://localhost:26657'
+            url: import.meta.env.VITE_NODE3_URL || 'http://localhost:26657'
         }
     ],
 
@@ -66,27 +54,21 @@ const CONFIG = {
 // ============================================
 const interact = {
     wallets: {},
-    rpcClient: null, // 클라이언트 재사용을 위한 캐시
+    rpcClient: null,
     cosmjsReady: false,
 
     async init() {
-        console.log(`%c 🚀 TOPSTAR Dashboard v${VERSION} `, 'background: #222; color: #bada55; padding: 5px;');
-        console.log('📡 RPC:', CONFIG.RPC);
-        console.log('📡 API:', CONFIG.API);
-
-        this.log(`🚀 시스템 초기화 중... (v${VERSION})`, 'system');
+        this.log('🚀 시스템 초기화 중...', 'system');
 
         try {
-            // RPC 클라이언트 사전 연결 시도
+            // 초기 RPC 연결 시도
             try {
                 this.rpcClient = await StargateClient.connect(CONFIG.RPC);
-                this.log('📡 RPC 노드 연결 성공', 'system');
             } catch (e) {
-                console.warn('RPC 연결 실패 (백업 API 사용 예정):', e.message);
+                console.warn('RPC 초기 연결 실패 (백업 API 사용):', e.message);
             }
 
             for (const [key, account] of Object.entries(CONFIG.ACCOUNTS)) {
-                // 니모닉에서 지갑 생성
                 this.wallets[key] = await DirectSecp256k1HdWallet.fromMnemonic(
                     account.mnemonic,
                     { prefix: 'cosmos' }
@@ -95,22 +77,18 @@ const interact = {
                 const [acc] = await this.wallets[key].getAccounts();
                 account.address = acc.address;
 
-                // UI에 주소 표시
                 const addrElem = document.querySelector(`#user-${key} .address`);
                 if (addrElem) addrElem.textContent = account.address;
 
-                this.log(`${account.name} 지갑 준비됨: ${account.address.slice(0, 15)}...`, 'system');
+                this.log(`${account.name} 지갑 준비됨`, 'system');
             }
 
             this.cosmjsReady = true;
             this.updateBalances();
             setInterval(() => this.updateBalances(), 10000);
-
-            // 버튼 이벤트 리스너 등록
             this.setupButtonListeners();
 
             this.log('✅ 모든 시스템 준비 완료', 'success');
-
         } catch (e) {
             console.error('초기화 에러:', e);
             this.log('❌ 초기화 실패: ' + e.message, 'error');
@@ -121,14 +99,9 @@ const interact = {
         document.querySelectorAll('[data-action]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const action = btn.dataset.action;
-
-                if (action === 'mint') {
-                    await this.mint(btn.dataset.user);
-                } else if (action === 'burn') {
-                    await this.burn(btn.dataset.user);
-                } else if (action === 'transfer') {
-                    await this.transfer(btn.dataset.from, btn.dataset.to);
-                }
+                if (action === 'mint') await this.mint(btn.dataset.user);
+                else if (action === 'burn') await this.burn(btn.dataset.user);
+                else if (action === 'transfer') await this.transfer(btn.dataset.from, btn.dataset.to);
             });
         });
     },
@@ -140,18 +113,17 @@ const interact = {
             let amount = 0;
             let success = false;
 
-            // 시도 1: RPC 클라이언트 재사용
-            if (this.rpcClient) {
-                try {
-                    const balance = await this.rpcClient.getBalance(account.address, CONFIG.DENOM);
-                    amount = balance ? parseInt(balance.amount) : 0;
-                    success = true;
-                } catch (e) {
-                    this.rpcClient = null; // 실패 시 클라이언트 초기화 후 다음 주기에 재연결 시도
-                }
+            // 시도 1: RPC (StargateClient)
+            try {
+                if (!this.rpcClient) this.rpcClient = await StargateClient.connect(CONFIG.RPC);
+                const balance = await this.rpcClient.getBalance(account.address, CONFIG.DENOM);
+                amount = balance ? parseInt(balance.amount) : 0;
+                success = true;
+            } catch (e) {
+                this.rpcClient = null;
             }
 
-            // 시도 2: REST API (전체 잔액 조회 - 500 에러 방지를 위해 by_denom 미사용)
+            // 시도 2: REST API 백업 (전체 조회 후 필터링)
             if (!success) {
                 try {
                     const response = await fetch(`${CONFIG.API}/cosmos/bank/v1beta1/balances/${account.address}`);
@@ -160,22 +132,6 @@ const interact = {
                         const found = (data.balances || []).find(b => b.denom === CONFIG.DENOM);
                         amount = found ? parseInt(found.amount) : 0;
                         success = true;
-                    }
-                } catch (apiError) {
-                    // 무시
-                }
-            }
-
-            // 시도 3: 네이티브 RPC ABCI_QUERY (최후의 보루 - 500에러 및 라이브러리 버그 우회)
-            if (!success) {
-                try {
-                    // cosmos-sdk bank balance path (0x02 + address)
-                    this.log('Fallback: ABCI Query 시도 중...', 'system');
-                    const response = await fetch(`${CONFIG.RPC}/abci_query?path=%22/custom/bank/balance%22&data=%22${account.address}%22`);
-                    if (response.ok) {
-                        const res = await response.json();
-                        // 여기서는 단순 성공 여부만 확인하거나 추가 파싱 로직을 넣을 수 있습니다.
-                        // 우선 시도 2(API) 결과가 500이면 여기서 멈추지 않고 계속 시도하게 함
                     }
                 } catch (e) { }
             }
@@ -187,41 +143,25 @@ const interact = {
         }
     },
 
-
-
-
     async mint(userKey) {
         const account = CONFIG.ACCOUNTS[userKey];
-        if (!account?.address) {
-            return this.log('지갑이 준비되지 않았습니다.', 'error');
-        }
+        if (!account?.address) return this.log('지갑이 준비되지 않았습니다.', 'error');
 
         const msg = {
             typeUrl: '/topstar.mytoken.v1.MsgMint',
-            value: {
-                creator: account.address,
-                amount: '100'
-            }
+            value: { creator: account.address, amount: '100' }
         };
-
-
         await this.sendTx(userKey, [msg], 'Mint 100 MYTOKEN');
     },
 
     async burn(userKey) {
         const account = CONFIG.ACCOUNTS[userKey];
-        if (!account?.address) {
-            return this.log('지갑이 준비되지 않았습니다.', 'error');
-        }
+        if (!account?.address) return this.log('지갑이 준비되지 않았습니다.', 'error');
 
         const msg = {
             typeUrl: '/topstar.mytoken.v1.MsgBurn',
-            value: {
-                creator: account.address,
-                amount: '50'
-            }
+            value: { creator: account.address, amount: '50' }
         };
-
         await this.sendTx(userKey, [msg], 'Burn 50 MYTOKEN');
     },
 
@@ -241,37 +181,27 @@ const interact = {
                 amount: [{ denom: CONFIG.DENOM, amount: '10' }]
             }
         };
-
         await this.sendTx(fromKey, [msg], `Transfer 10 to ${toAccount.name}`);
     },
 
     async sendTx(userKey, msgs, memo) {
-        if (!this.cosmjsReady) {
-            return this.log('시스템이 아직 준비되지 않았습니다.', 'error');
-        }
+        if (!this.cosmjsReady) return this.log('시스템이 아직 준비되지 않았습니다.', 'error');
 
         try {
             const wallet = this.wallets[userKey];
             const [account] = await wallet.getAccounts();
-
             this.log(`⏳ ${memo} 전송 중...`, 'system');
 
             const client = await SigningStargateClient.connectWithSigner(
                 CONFIG.RPC,
                 wallet,
                 {
-                    registry, // 커스텀 레지스트리 등록
+                    registry,
                     gasPrice: GasPrice.fromString("0stake")
                 }
             );
 
-
-            const result = await client.signAndBroadcast(
-                account.address,
-                msgs,
-                "auto",
-                memo
-            );
+            const result = await client.signAndBroadcast(account.address, msgs, "auto", memo);
 
             if (result.code === 0) {
                 this.log(`✅ 성공! [${memo}]`, 'success', result.transactionHash);
@@ -279,17 +209,14 @@ const interact = {
             } else {
                 this.log(`❌ 실패: ${result.rawLog}`, 'error');
             }
-
             return result;
         } catch (e) {
-            console.error('트랜잭션 에러:', e);
             this.log(`❌ 에러: ${e.message}`, 'error');
         }
     },
 
     log(msg, type, hash = null) {
         console.log(`[${type}]`, msg);
-
         const logContainer = document.getElementById('tx-log');
         if (!logContainer) return;
 
@@ -302,26 +229,22 @@ const interact = {
 };
 
 // ============================================
-// NODE STATUS (script.js 기능)
+// NODE STATUS
 // ============================================
 async function fetchNodeStatus(node) {
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
-
         const response = await fetch(`${node.url}/status`, { signal: controller.signal });
         clearTimeout(timeoutId);
-
         const data = await response.json();
         return {
             ...node,
             online: true,
             blockHeight: parseInt(data.result.sync_info.latest_block_height),
-            catchingUp: data.result.sync_info.catching_up,
-            latestBlockTime: data.result.sync_info.latest_block_time
+            catchingUp: data.result.sync_info.catching_up
         };
     } catch (e) {
-        console.warn(`Error fetching node ${node.id}:`, e.message);
         return { ...node, online: false };
     }
 }
@@ -329,10 +252,7 @@ async function fetchNodeStatus(node) {
 function renderNodeCard(node) {
     const card = document.createElement('div');
     card.className = `node-card ${node.online ? (node.catchingUp ? 'syncing' : 'online') : 'offline'}`;
-
-    const statusText = node.online
-        ? (node.catchingUp ? 'Syncing...' : 'Online')
-        : 'Offline';
+    const statusText = node.online ? (node.catchingUp ? 'Syncing...' : 'Online') : 'Offline';
 
     card.innerHTML = `
         <div class="node-status-dot"></div>
@@ -346,44 +266,34 @@ function renderNodeCard(node) {
             <strong>${statusText}</strong>
         </div>
     `;
-
     return card;
 }
 
 async function refreshAll() {
-    const results = await Promise.all(
-        CONFIG.NODES.map(node => fetchNodeStatus(node))
-    );
-
+    const results = await Promise.all(CONFIG.NODES.map(node => fetchNodeStatus(node)));
     const container = document.getElementById('nodes-container');
     if (container) {
         container.innerHTML = '';
         results.forEach(node => container.appendChild(renderNodeCard(node)));
     }
 
-    // 통계 업데이트
     const onlineNodes = results.filter(n => n.online);
     const activeNodesElem = document.getElementById('active-nodes');
-    if (activeNodesElem) {
-        activeNodesElem.textContent = `${onlineNodes.length} / ${CONFIG.NODES.length}`;
-    }
+    if (activeNodesElem) activeNodesElem.textContent = `${onlineNodes.length} / ${CONFIG.NODES.length}`;
 
     if (onlineNodes.length > 0) {
         const maxHeight = Math.max(...onlineNodes.map(n => n.blockHeight));
         const highestBlockElem = document.getElementById('highest-block');
-        if (highestBlockElem) {
-            highestBlockElem.textContent = maxHeight.toLocaleString();
-        }
+        if (highestBlockElem) highestBlockElem.textContent = maxHeight.toLocaleString();
     }
 }
 
 // ============================================
 // INIT
 // ============================================
-window.interact = interact; // 디버깅용
-
+window.interact = interact;
 document.addEventListener('DOMContentLoaded', () => {
     interact.init();
     refreshAll();
-    setInterval(refreshAll, 5000);
+    setInterval(refreshAll, 6000);
 });
