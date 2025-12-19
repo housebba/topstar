@@ -170,7 +170,7 @@ jobs:
 
       - name: Deploy and Sync
         run: |
-          IP=${{ secrets[format('SERVER_{1}_IP', '', matrix.server_id)] }}
+          IP=${{ secrets[format('SERVER_{0}_IP', matrix.server_id)] }}
           USER=${{ secrets.REMOTE_USER }}
           MASTER_PEER=$(cat master_peer.txt)
           
@@ -178,13 +178,11 @@ jobs:
           ssh -o StrictHostKeyChecking=no $USER@$IP "mkdir -p ~/deploy"
           scp -o StrictHostKeyChecking=no topstar-linux-arm64.tar.gz $USER@$IP:~/deploy/
           
-          # 1. 초기화 및 바이너리 교체
+          # 1. 바이너리 교체 및 초기화
           ssh -o StrictHostKeyChecking=no $USER@$IP << 'EOF'
             cd ~/deploy
             tar -xzvf topstar-linux-arm64.tar.gz
             chmod +x topstard
-            
-            # 파일이 없을 때만 초기화 (기존 키 보존)
             if [ ! -f ~/.topstar/config/genesis.json ]; then
               ./topstard init "node-${{ matrix.server_id }}" --chain-id topstar-testnet-1
             fi
@@ -193,41 +191,72 @@ jobs:
           # 2. 마스터 제네시스 주입
           scp -o StrictHostKeyChecking=no ./master_genesis.json $USER@$IP:~/.topstar/config/genesis.json
           
-          # 3. P2P 자동 연결 설정 (config.toml 수정 - 정확히 해당 줄만 타겟팅)
-          if [ "${{ matrix.server_id }}" != "1" ]; then
-            echo "🔗 Connecting Server ${{ matrix.server_id }} to Master Peer: $MASTER_PEER"
-            ssh -o StrictHostKeyChecking=no $USER@$IP "sed -i 's/^persistent_peers = .*/persistent_peers = \"$MASTER_PEER\"/' ~/.topstar/config/config.toml"
-          fi
+          # 3. 설정 최적화 (P2P, RPC, API, CORS)
+          ssh -o StrictHostKeyChecking=no $USER@$IP << EOF
+            CONFIG_PATH="\$HOME/.topstar/config/config.toml"
+            APP_PATH="\$HOME/.topstar/config/app.toml"
+            
+            # P2P 연결 (Master Peer)
+            if [ "${{ matrix.server_id }}" != "1" ]; then
+              sed -i 's/^persistent_peers = .*/persistent_peers = "$MASTER_PEER"/' \$CONFIG_PATH
+            fi
+            
+            # RPC & CORS 개방
+            sed -i 's|^laddr = "tcp://127.0.0.1:26657"|laddr = "tcp://0.0.0.0:26657"|' \$CONFIG_PATH
+            sed -i 's|^cors_allowed_origins = .*|cors_allowed_origins = ["*"]|' \$CONFIG_PATH
+            
+            # API 활성화 & CORS
+            sed -i '/\[api\]/,/\[/ s|^enable = false|enable = true|' \$APP_PATH
+            sed -i 's|^address = "tcp://localhost:1317"|address = "tcp://0.0.0.0:1317"|' \$APP_PATH
+            sed -i 's|^enabled-unsafe-cors = .*|enabled-unsafe-cors = true|' \$APP_PATH
+          EOF
 
-          # 4. OS 방화벽 오픈 (OCI Ubuntu용 iptables 설정 - 최우선 순위 1로 설정)
+          # 4. 방화벽 설정 (OCI 전용)
           ssh -o StrictHostKeyChecking=no $USER@$IP << 'EOF'
             sudo iptables -I INPUT 1 -p tcp --dport 26656 -j ACCEPT
             sudo iptables -I INPUT 1 -p tcp --dport 26657 -j ACCEPT
             sudo iptables -I INPUT 1 -p tcp --dport 1317 -j ACCEPT
             sudo iptables -I INPUT 1 -p tcp --dport 9090 -j ACCEPT
-            # 변경사항 저장
             sudo netfilter-persistent save 2>/dev/null || true
           EOF
 
-          
-          # 5. systemd 서비스 파일 생성 및 노드 재시작 (상시 실행 설정)
-
+          # 5. systemd 서비스 상시 가동 설정
           ssh -o StrictHostKeyChecking=no $USER@$IP << 'EOF'
             USER_NAME=$(whoami)
-            
-            # 서비스 파일 생성 (가장 확실한 printf 방식 사용)
-            sudo printf "[Unit]\nDescription=Topstar Node Daemon\nAfter=network-online.target\n\n[Service]\nUser=%s\nExecStart=/home/%s/deploy/topstard start --minimum-gas-prices=0stake\nRestart=always\nRestartSec=3\nLimitNOFILE=4096\n\n[Install]\nWantedBy=multi-user.target\n" "$USER_NAME" "$USER_NAME" | sudo tee /etc/systemd/system/topstard.service > /dev/null
-
-
-            # 서비스 활성화 및 재시작
+            sudo printf "[Unit]\nDescription=Topstar Node\nAfter=network-online.target\n\n[Service]\nUser=%s\nExecStart=/home/%s/deploy/topstard start --minimum-gas-prices=0stake\nRestart=always\nRestartSec=3\nLimitNOFILE=4096\n\n[Install]\nWantedBy=multi-user.target\n" "$USER_NAME" "$USER_NAME" | sudo tee /etc/systemd/system/topstard.service > /dev/null
             sudo systemctl daemon-reload
             sudo systemctl enable topstard
             sudo systemctl restart topstard
-            
-            # 상태 확인
-            sleep 2
-            sudo systemctl is-active topstard
-            echo "✅ Topstard Service is now running and managed by systemd!"
+            echo "✅ Node is now running under systemd"
+          EOF
+
+  update-dashboard:
+    needs: deploy-nodes
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update Dashboard Config
+        run: |
+            cat <<EOF > dashboard/config.js
+            const CONFIG = {
+                NODES: [
+                    { id: 'node-01', name: 'Validator Node 01', url: 'http://${{ secrets.SERVER_1_IP }}:26657' },
+                    { id: 'node-02', name: 'Validator Node 02', url: 'http://${{ secrets.SERVER_2_IP }}:26657' },
+                    { id: 'node-03', name: 'Validator Node 03', url: 'http://${{ secrets.SERVER_3_IP }}:26657' }
+                ]
+            };
+            EOF
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dashboard
+          publish_branch: gh-pages
+
 
 
 
