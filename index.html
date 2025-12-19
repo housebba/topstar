@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Topstar Testnet Explorer | 실시간 노드 상태</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background-overlay"></div>
+    
+    <header>
+        <div class="container">
+            <div class="logo">
+                <span class="pulse"></span>
+                <h1>TOPSTAR <span>TESTNET</span></h1>
+            </div>
+            <div class="network-badge">Chain ID: <span>topstar-testnet-1</span></div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="overview">
+            <div class="stat-card">
+                <h3>최신 블록 높이</h3>
+                <p id="highest-block">---</p>
+                <span class="label">Network Average</span>
+            </div>
+            <div class="stat-card">
+                <h3>활성 노드</h3>
+                <p id="active-nodes">0 / 3</p>
+                <span class="label">Nodes Online</span>
+            </div>
+        </section>
+
+        <section class="nodes-grid" id="nodes-container">
+            <!-- Node cards will be injected here -->
+            <div class="node-card skeleton" id="node-01">
+                <div class="status-dot"></div>
+                <div class="card-header">
+                    <h2>Validator Node 01</h2>
+                    <span class="tag">Master</span>
+                </div>
+                <div class="stats">
+                    <div class="stat">
+                        <label>Block Height</label>
+                        <value>---</value>
+                    </div>
+                    <div class="stat">
+                        <label>Peers</label>
+                        <value>---</value>
+                    </div>
+                </div>
+                <div class="latency">Latency: <span>--ms</span></div>
+            </div>
+            
+            <div class="node-card skeleton" id="node-02">
+                <div class="status-dot"></div>
+                <div class="card-header">
+                    <h2>Validator Node 02</h2>
+                    <span class="tag">Peered</span>
+                </div>
+                <div class="stats">
+                    <div class="stat">
+                        <label>Block Height</label>
+                        <value>---</value>
+                    </div>
+                    <div class="stat">
+                        <label>Peers</label>
+                        <value>---</value>
+                    </div>
+                </div>
+                <div class="latency">Latency: <span>--ms</span></div>
+            </div>
+
+            <div class="node-card skeleton" id="node-03">
+                <div class="status-dot"></div>
+                <div class="card-header">
+                    <h2>Validator Node 03</h2>
+                    <span class="tag">Peered</span>
+                </div>
+                <div class="stats">
+                    <div class="stat">
+                        <label>Block Height</label>
+                        <value>---</value>
+                    </div>
+                    <div class="stat">
+                        <label>Peers</label>
+                        <value>---</value>
+                    </div>
+                </div>
+                <div class="latency">Latency: <span>--ms</span></div>
+            </div>
+        </section>
+
+        <section class="technical-details">
+            <h2>Deployment Infrastructure</h2>
+            <div class="grid">
+                <div class="info-box">
+                    <h4>CI/CD Pipeline</h4>
+                    <p>Github Actions를 통한 자동 빌드 및 다중 서버 동시 배포 아키텍처</p>
+                </div>
+                <div class="info-box">
+                    <h4>Runtime Environment</h4>
+                    <p>OCI (Oracle Cloud Infrastructure) ARM64 리눅스 서버 3중화 클러스터</p>
+                </div>
+                <div class="info-box">
+                    <h4>Automation</h4>
+                    <p>Ansible 스타일의 SSH 자동화 및 Systemd 서비스 상시 운용</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Topstar Blockchain Network Project. Powered by Cosmos SDK.</p>
+    </footer>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
