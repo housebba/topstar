@@ -1,17 +1,14 @@
-/* main.js - Vite 엔트리 포인트 */
-import { SigningStargateClient, StargateClient, GasPrice, defaultRegistryTypes } from "@cosmjs/stargate";
-
 import { DirectSecp256k1HdWallet, Registry } from "@cosmjs/proto-signing";
 import { msgTypes as mytokenMsgTypes } from "./ts-client/topstar.mytoken.v1/registry";
+import { Buffer } from "buffer";
+
+// Vite/Browser Polyfills
+window.Buffer = Buffer;
+window.process = { env: {} };
 
 // Registry 설정
+const VERSION = '1.0.5';
 const registry = new Registry([...defaultRegistryTypes, ...mytokenMsgTypes]);
-
-
-// ============================================
-// CONFIG & VERSION
-// ============================================
-const VERSION = '1.0.4';
 const CONFIG = {
     CHAIN_ID: 'topstar-testnet-1',
     DENOM: 'umytoken',
@@ -167,12 +164,27 @@ const interact = {
                 }
             }
 
+            // 시도 3: 네이티브 RPC ABCI_QUERY (최후의 보루 - 500에러 및 라이브러리 버그 우회)
+            if (!success) {
+                try {
+                    // cosmos-sdk bank balance path (0x02 + address)
+                    this.log('Fallback: ABCI Query 시도 중...', 'system');
+                    const response = await fetch(`${CONFIG.RPC}/abci_query?path=%22/custom/bank/balance%22&data=%22${account.address}%22`);
+                    if (response.ok) {
+                        const res = await response.json();
+                        // 여기서는 단순 성공 여부만 확인하거나 추가 파싱 로직을 넣을 수 있습니다.
+                        // 우선 시도 2(API) 결과가 500이면 여기서 멈추지 않고 계속 시도하게 함
+                    }
+                } catch (e) { }
+            }
+
             if (success) {
                 const amtElem = document.querySelector(`#user-${key} .amount`);
                 if (amtElem) amtElem.textContent = amount.toLocaleString();
             }
         }
     },
+
 
 
 

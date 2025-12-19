@@ -208,10 +208,14 @@ jobs:
             sed -i 's|^laddr = "tcp://127.0.0.1:26657"|laddr = "tcp://0.0.0.0:26657"|' \$CONFIG_PATH
             sed -i 's|^cors_allowed_origins = .*|cors_allowed_origins = ["*"]|' \$CONFIG_PATH
             
-            # API 활성화 & CORS
+            # API 활성화 & CORS & gRPC 연동
             sed -i '/\[api\]/,/\[/ s|^enable = false|enable = true|' \$APP_PATH
             sed -i 's|^address = "tcp://localhost:1317"|address = "tcp://0.0.0.0:1317"|' \$APP_PATH
             sed -i 's|^enabled-unsafe-cors = .*|enabled-unsafe-cors = true|' \$APP_PATH
+            
+            # gRPC 내부 통신용 개방 (500 에러 방지)
+            sed -i '/\[grpc\]/,/\[/ s|^address = "localhost:9090"|address = "0.0.0.0:9090"|' \$APP_PATH
+            sed -i '/\[grpc\]/,/\[/ s|^enable = false|enable = true|' \$APP_PATH
           EOF
 
           # 4. 방화벽 설정 (OCI 전용)
