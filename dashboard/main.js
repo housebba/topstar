@@ -9,17 +9,17 @@ window.Buffer = Buffer;
 window.process = { env: {} };
 
 // Registry 설정
-const VERSION = '1.0.5';
+const VERSION = '1.0.6';
 const registry = new Registry([...defaultRegistryTypes, ...mytokenMsgTypes]);
 const CONFIG = {
     CHAIN_ID: 'topstar-testnet-1',
     DENOM: 'umytoken',
-    // 안전한 주소 로딩 로직
-    RPC: (typeof import.meta.env.VITE_RPC_URL === 'string' && import.meta.env.VITE_RPC_URL.length > 10)
+    // 실제 IP 또는 도메인이 들어온 경우에만 사용하도록 강화
+    RPC: (typeof import.meta.env.VITE_RPC_URL === 'string' && import.meta.env.VITE_RPC_URL.includes('.'))
         ? import.meta.env.VITE_RPC_URL
         : 'http://localhost:26657',
 
-    API: (typeof import.meta.env.VITE_API_URL === 'string' && import.meta.env.VITE_API_URL.length > 10)
+    API: (typeof import.meta.env.VITE_API_URL === 'string' && import.meta.env.VITE_API_URL.includes('.'))
         ? import.meta.env.VITE_API_URL
         : 'http://localhost:1317',
 
