@@ -113,16 +113,16 @@ jobs:
             rm -rf ~/.topstar/
             ./topstard init node-01 --chain-id topstar-testnet-1
               
-              # 2. 고정된 앨리스(Admin) 계정 및 밥 계정 생성 (포트폴리오 시연용)
-              echo "top star testnet network power awesome galaxy space tech cosmos future elite" | ./topstard keys add admin --recover --keyring-backend test
-              echo "bob star testnet network power awesome galaxy space tech cosmos future elite" | ./topstard keys add bob --recover --keyring-backend test
+              # 2. 유효한 니모닉으로 지갑 복구 (대시보드와 동일한 니모닉 사용)
+              echo "duty cricket season pair core apology lava announce liberty prison flip viable assist cook armor blind strong agree online phone fold shaft heavy slow" | ./topstard keys add alice --recover --keyring-backend test
+              echo "media cluster angry because size athlete wrist advice couch room border angle response whip bless fruit canvas iron jaguar craft virtual gold member today" | ./topstard keys add bob --recover --keyring-backend test
               
-              # 3. 제네시스 계정 설정 (앨리스는 충분한 자금, 밥은 소액)
-              ./topstard genesis add-genesis-account admin 1000000000stake,1000000umytoken --keyring-backend test
-              ./topstard genesis add-genesis-account bob 1000000stake --keyring-backend test
+              # 3. 제네시스 계정 설정 (충분한 자금 할당)
+              ./topstard genesis add-genesis-account alice 1000000000stake,2000000umytoken --keyring-backend test
+              ./topstard genesis add-genesis-account bob 1000000stake,1000000umytoken --keyring-backend test
               
-              # 4. 검증인 선언 (Gentx) - 여기서 키를 못 찾지 않게 백엔드 명시가 필수!
-              ./topstard genesis gentx admin 100000000stake --chain-id topstar-testnet-1 --keyring-backend test
+              # 4. 검증인 선언 (Gentx)
+              ./topstard genesis gentx alice 100000000stake --chain-id topstar-testnet-1 --keyring-backend test
               
               # 5. 수집
               ./topstard genesis collect-gentxs
