@@ -11,7 +11,7 @@ const registry = new Registry([...defaultRegistryTypes, ...mytokenMsgTypes]);
 // ============================================
 // CONFIG & VERSION
 // ============================================
-const VERSION = '1.0.3';
+const VERSION = '1.0.4';
 const CONFIG = {
     CHAIN_ID: 'topstar-testnet-1',
     DENOM: 'umytoken',
@@ -67,6 +67,7 @@ const CONFIG = {
 // ============================================
 const interact = {
     wallets: {},
+    rpcClient: null, // 클라이언트 재사용을 위한 캐시
     cosmjsReady: false,
 
     async init() {
@@ -77,6 +78,14 @@ const interact = {
         this.log(`🚀 시스템 초기화 중... (v${VERSION})`, 'system');
 
         try {
+            // RPC 클라이언트 사전 연결 시도
+            try {
+                this.rpcClient = await StargateClient.connect(CONFIG.RPC);
+                this.log('📡 RPC 노드 연결 성공', 'system');
+            } catch (e) {
+                console.warn('RPC 연결 실패 (백업 API 사용 예정):', e.message);
+            }
+
             for (const [key, account] of Object.entries(CONFIG.ACCOUNTS)) {
                 // 니모닉에서 지갑 생성
                 this.wallets[key] = await DirectSecp256k1HdWallet.fromMnemonic(
@@ -132,31 +141,35 @@ const interact = {
             let amount = 0;
             let success = false;
 
-            // 시도 1: RPC (StargateClient) - 가장 정확함
-            try {
-                const client = await StargateClient.connect(CONFIG.RPC);
-                const balance = await client.getBalance(account.address, CONFIG.DENOM);
-                amount = balance ? parseInt(balance.amount) : 0;
-                success = true;
-            } catch (rpcError) {
-                // 시도 2: REST API (Fetch) - RPC가 Mixed Content로 막힐 때의 백업
+            // 시도 1: RPC 클라이언트 재사용
+            if (this.rpcClient) {
                 try {
-                    const response = await fetch(`${CONFIG.API}/cosmos/bank/v1beta1/balances/${account.address}/by_denom?denom=${CONFIG.DENOM}`);
+                    const balance = await this.rpcClient.getBalance(account.address, CONFIG.DENOM);
+                    amount = balance ? parseInt(balance.amount) : 0;
+                    success = true;
+                } catch (e) {
+                    this.rpcClient = null; // 실패 시 클라이언트 초기화 후 다음 주기에 재연결 시도
+                }
+            }
+
+            // 시도 2: REST API (전체 잔액 조회 - 500 에러 방지를 위해 by_denom 미사용)
+            if (!success) {
+                try {
+                    const response = await fetch(`${CONFIG.API}/cosmos/bank/v1beta1/balances/${account.address}`);
                     if (response.ok) {
                         const data = await response.json();
-                        amount = data.balance ? parseInt(data.balance.amount) : 0;
+                        const found = (data.balances || []).find(b => b.denom === CONFIG.DENOM);
+                        amount = found ? parseInt(found.amount) : 0;
                         success = true;
                     }
                 } catch (apiError) {
-                    // 둘 다 실패
+                    // 무시
                 }
             }
 
             if (success) {
                 const amtElem = document.querySelector(`#user-${key} .amount`);
                 if (amtElem) amtElem.textContent = amount.toLocaleString();
-            } else {
-                console.warn(`${key} 잔액 업데이트 실패 (RPC/API 모두 응답 없음)`);
             }
         }
     },
