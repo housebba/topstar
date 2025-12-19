@@ -180,19 +180,23 @@ jobs:
           ssh -o StrictHostKeyChecking=no $USER@$IP "mkdir -p ~/deploy"
           scp -o StrictHostKeyChecking=no topstar-linux-arm64.tar.gz $USER@$IP:~/deploy/
           
-          # 1. 바이너리 교체 및 초기화 (리셋)
-          ssh -o StrictHostKeyChecking=no $USER@$IP << 'EOF'
+          # 1. 바이너리 교체 및 초기화 (1번은 init-master에서 이미 완료됨)
+          ssh -o StrictHostKeyChecking=no $USER@$IP << EOF
             cd ~/deploy
             tar -xzvf topstar-linux-arm64.tar.gz
             chmod +x topstard
             
-            # 기존 데이터 삭제 (마스터와 동기화를 위해)
-            rm -rf ~/.topstar/
-            ./topstard init "node-${{ matrix.server_id }}" --chain-id topstar-testnet-1
+            # 1번 서버는 검증인 키를 보존해야 하므로 재초기화하지 않음
+            if [ "${{ matrix.server_id }}" != "1" ]; then
+              rm -rf ~/.topstar/
+              ./topstard init "node-${{ matrix.server_id }}" --chain-id topstar-testnet-1
+            fi
           EOF
 
-          # 2. 마스터 제네시스 주입
-          scp -o StrictHostKeyChecking=no ./master_genesis.json $USER@$IP:~/.topstar/config/genesis.json
+          # 2. 마스터 제네시스 주입 (2, 3번만)
+          if [ "${{ matrix.server_id }}" != "1" ]; then
+            scp -o StrictHostKeyChecking=no ./master_genesis.json $USER@$IP:~/.topstar/config/genesis.json
+          fi
           
           # 3. 설정 최적화 (P2P, RPC, API, CORS)
           ssh -o StrictHostKeyChecking=no $USER@$IP << EOF
