@@ -1,0 +1,22 @@
+{
+  "name": "topstar-dashboard",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  },
+  "dependencies": {
+    "@cosmjs/proto-signing": "^0.33.1",
+    "@cosmjs/stargate": "^0.33.1",
+    "axios": "^1.7.0",
+    "buffer": "^6.0.3",
+    "events": "^3.3.0",
+    "@bufbuild/protobuf": "^2.4.0"
+  }
+}

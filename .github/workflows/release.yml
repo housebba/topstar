@@ -109,22 +109,24 @@ jobs:
             cd ~/deploy
             tar -xzf topstar-linux-arm64.tar.gz && chmod +x topstard
             
-            # 1. 초기화 (데이터가 없을 때만 실행)
-            if [ ! -f ~/.topstar/config/genesis.json ]; then
-              ./topstard init node-01 --chain-id topstar-testnet-1
+            # 1. 초기화 (매 배포마다 깨끗하게 리셋하여 변경사항 반영)
+            rm -rf ~/.topstar/
+            ./topstard init node-01 --chain-id topstar-testnet-1
               
-              # 2. 키 생성 (반드시 --keyring-backend test 명시)
-              (echo "y") | ./topstard keys add admin --keyring-backend test
+              # 2. 고정된 앨리스(Admin) 계정 및 밥 계정 생성 (포트폴리오 시연용)
+              echo "top star testnet network power awesome galaxy space tech cosmos future elite" | ./topstard keys add admin --recover --keyring-backend test
+              echo "bob star testnet network power awesome galaxy space tech cosmos future elite" | ./topstard keys add bob --recover --keyring-backend test
               
-              # 3. 제네시스 계정 설정
-              ./topstard genesis add-genesis-account admin 1000000000stake --keyring-backend test
+              # 3. 제네시스 계정 설정 (앨리스는 충분한 자금, 밥은 소액)
+              ./topstard genesis add-genesis-account admin 1000000000stake,1000000umytoken --keyring-backend test
+              ./topstard genesis add-genesis-account bob 1000000stake --keyring-backend test
               
               # 4. 검증인 선언 (Gentx) - 여기서 키를 못 찾지 않게 백엔드 명시가 필수!
               ./topstard genesis gentx admin 100000000stake --chain-id topstar-testnet-1 --keyring-backend test
               
               # 5. 수집
               ./topstard genesis collect-gentxs
-            fi
+            # fi (데이터 리셋을 위해 if문 제거)
           EOF
           
           # 6. 서버 1번의 Node ID 추출
@@ -178,14 +180,15 @@ jobs:
           ssh -o StrictHostKeyChecking=no $USER@$IP "mkdir -p ~/deploy"
           scp -o StrictHostKeyChecking=no topstar-linux-arm64.tar.gz $USER@$IP:~/deploy/
           
-          # 1. 바이너리 교체 및 초기화
+          # 1. 바이너리 교체 및 초기화 (리셋)
           ssh -o StrictHostKeyChecking=no $USER@$IP << 'EOF'
             cd ~/deploy
             tar -xzvf topstar-linux-arm64.tar.gz
             chmod +x topstard
-            if [ ! -f ~/.topstar/config/genesis.json ]; then
-              ./topstard init "node-${{ matrix.server_id }}" --chain-id topstar-testnet-1
-            fi
+            
+            # 기존 데이터 삭제 (마스터와 동기화를 위해)
+            rm -rf ~/.topstar/
+            ./topstard init "node-${{ matrix.server_id }}" --chain-id topstar-testnet-1
           EOF
 
           # 2. 마스터 제네시스 주입
@@ -238,23 +241,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Update Dashboard Config
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: dashboard/package.json
+
+      - name: Install Dependencies
         run: |
-            cat <<EOF > dashboard/config.js
-            const CONFIG = {
-                NODES: [
-                    { id: 'node-01', name: 'Validator Node 01', url: 'http://${{ secrets.SERVER_1_IP }}:26657' },
-                    { id: 'node-02', name: 'Validator Node 02', url: 'http://${{ secrets.SERVER_2_IP }}:26657' },
-                    { id: 'node-03', name: 'Validator Node 03', url: 'http://${{ secrets.SERVER_3_IP }}:26657' }
-                ]
-            };
-            EOF
+          cd dashboard
+          npm install
+
+      - name: Build Dashboard
+        env:
+          VITE_RPC_URL: http://${{ secrets.SERVER_1_IP }}:26657
+          VITE_API_URL: http://${{ secrets.SERVER_1_IP }}:1317
+          VITE_NODE1_URL: http://${{ secrets.SERVER_1_IP }}:26657
+          VITE_NODE2_URL: http://${{ secrets.SERVER_2_IP }}:26657
+          VITE_NODE3_URL: http://${{ secrets.SERVER_3_IP }}:26657
+        run: |
+          cd dashboard
+          npm run build
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dashboard
+          publish_dir: ./dashboard/dist
           publish_branch: gh-pages
 
 

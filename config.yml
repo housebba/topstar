@@ -2,6 +2,16 @@ version: 1
 validation: sovereign
 default_denom: utopstar
 accounts: 
+- name: dashboard-alice
+  address: cosmos12n536mplfecrsyxvgvlsj7pkkq5vuptsfqe4fv
+  coins:
+  - 2000000umytoken
+  - 200000000utopstar
+- name: dashboard-bob
+  address: cosmos1nrsdy2c5uq83fe29xfff07lw7eze7dyfx8p746
+  coins:
+  - 1000000umytoken
+  - 100000000utopstar
 - name: alice
   coins:
   - 20000umytoken

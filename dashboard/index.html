@@ -1,15 +1,18 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Topstar Testnet Explorer | 실시간 노드 상태</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono&display=swap"
+        rel="stylesheet">
 </head>
+
 <body>
     <div class="background-overlay"></div>
-    
+
     <header>
         <div class="container">
             <div class="logo">
@@ -35,62 +38,68 @@
         </section>
 
         <section class="nodes-grid" id="nodes-container">
-            <!-- Node cards will be injected here -->
-            <div class="node-card skeleton" id="node-01">
-                <div class="status-dot"></div>
-                <div class="card-header">
-                    <h2>Validator Node 01</h2>
-                    <span class="tag">Master</span>
-                </div>
-                <div class="stats">
-                    <div class="stat">
-                        <label>Block Height</label>
-                        <value>---</value>
-                    </div>
-                    <div class="stat">
-                        <label>Peers</label>
-                        <value>---</value>
-                    </div>
-                </div>
-                <div class="latency">Latency: <span>--ms</span></div>
-            </div>
-            
-            <div class="node-card skeleton" id="node-02">
-                <div class="status-dot"></div>
-                <div class="card-header">
-                    <h2>Validator Node 02</h2>
-                    <span class="tag">Peered</span>
-                </div>
-                <div class="stats">
-                    <div class="stat">
-                        <label>Block Height</label>
-                        <value>---</value>
-                    </div>
-                    <div class="stat">
-                        <label>Peers</label>
-                        <value>---</value>
-                    </div>
-                </div>
-                <div class="latency">Latency: <span>--ms</span></div>
+            <!-- Node cards injected here -->
+        </section>
+
+        <section class="interaction-lab">
+            <div class="section-header">
+                <h2>Interactive Token Lab</h2>
+                <p>앨리스와 밥 사이의 토큰 Mint, Burn, Transfer 시연</p>
             </div>
 
-            <div class="node-card skeleton" id="node-03">
-                <div class="status-dot"></div>
-                <div class="card-header">
-                    <h2>Validator Node 03</h2>
-                    <span class="tag">Peered</span>
-                </div>
-                <div class="stats">
-                    <div class="stat">
-                        <label>Block Height</label>
-                        <value>---</value>
+            <div class="lab-grid">
+                <!-- Alice Card -->
+                <div class="user-card" id="user-alice">
+                    <div class="user-header">
+                        <div class="avatar alice">A</div>
+                        <div>
+                            <h3>Alice (Admin)</h3>
+                            <code class="address">Loading...</code>
+                        </div>
                     </div>
-                    <div class="stat">
-                        <label>Peers</label>
-                        <value>---</value>
+                    <div class="user-balance">
+                        <label>MYTOKEN Balance</label>
+                        <span class="amount">0</span>
+                    </div>
+                    <div class="user-actions">
+                        <button data-action="mint" data-user="alice" class="btn-mint">Mint 100</button>
+                        <button data-action="burn" data-user="alice" class="btn-burn">Burn 50</button>
                     </div>
                 </div>
-                <div class="latency">Latency: <span>--ms</span></div>
+
+                <!-- Center Animation / Arrow -->
+                <div class="transfer-box">
+                    <div class="arrow-container">
+                        <div class="arrow"></div>
+                    </div>
+                    <button data-action="transfer" data-from="alice" data-to="bob" class="btn-transfer">Send 10 to
+                        Bob</button>
+                </div>
+
+                <!-- Bob Card -->
+                <div class="user-card" id="user-bob">
+                    <div class="user-header">
+                        <div class="avatar bob">B</div>
+                        <div>
+                            <h3>Bob (user)</h3>
+                            <code class="address">Loading...</code>
+                        </div>
+                    </div>
+                    <div class="user-balance">
+                        <label>MYTOKEN Balance</label>
+                        <span class="amount">0</span>
+                    </div>
+                    <div class="user-actions">
+                        <p class="hint">Alice로부터 송금을 기다리고 있습니다.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tx-log-container">
+                <h4>Transaction Feed</h4>
+                <div id="tx-log" class="tx-log">
+                    <div class="log-entry system">네트워크가 성공적으로 연결되었습니다. 트랜잭션을 시작하세요.</div>
+                </div>
             </div>
         </section>
 
@@ -117,7 +126,7 @@
         <p>&copy; 2024 Topstar Blockchain Network Project. Powered by Cosmos SDK.</p>
     </footer>
 
-    <script src="config.js"></script>
-    <script src="script.js"></script>
+    <script type="module" src="/main.js"></script>
 </body>
+
 </html>
