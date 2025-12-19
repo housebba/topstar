@@ -1,3 +1,5 @@
+/* main.js - Vite 엔트리 포인트 */
+import { SigningStargateClient, StargateClient, GasPrice, defaultRegistryTypes } from "@cosmjs/stargate";
 import { DirectSecp256k1HdWallet, Registry } from "@cosmjs/proto-signing";
 import { msgTypes as mytokenMsgTypes } from "./ts-client/topstar.mytoken.v1/registry";
 import { Buffer } from "buffer";
