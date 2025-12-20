@@ -147,22 +147,28 @@ const interact = {
         const account = CONFIG.ACCOUNTS[userKey];
         if (!account?.address) return this.log('지갑이 준비되지 않았습니다.', 'error');
 
+        const amountInput = document.getElementById(`mint-amount-${userKey}`);
+        const amount = amountInput ? amountInput.value : '100';
+
         const msg = {
             typeUrl: '/topstar.mytoken.v1.MsgMint',
-            value: { creator: account.address, amount: '100' }
+            value: { creator: account.address, amount: amount }
         };
-        await this.sendTx(userKey, [msg], 'Mint 100 MYTOKEN');
+        await this.sendTx(userKey, [msg], `Mint ${amount} MYTOKEN`);
     },
 
     async burn(userKey) {
         const account = CONFIG.ACCOUNTS[userKey];
         if (!account?.address) return this.log('지갑이 준비되지 않았습니다.', 'error');
 
+        const amountInput = document.getElementById(`burn-amount-${userKey}`);
+        const amount = amountInput ? amountInput.value : '50';
+
         const msg = {
             typeUrl: '/topstar.mytoken.v1.MsgBurn',
-            value: { creator: account.address, amount: '50' }
+            value: { creator: account.address, amount: amount }
         };
-        await this.sendTx(userKey, [msg], 'Burn 50 MYTOKEN');
+        await this.sendTx(userKey, [msg], `Burn ${amount} MYTOKEN`);
     },
 
     async transfer(fromKey, toKey) {
@@ -173,15 +179,19 @@ const interact = {
             return this.log('지갑이 준비되지 않았습니다.', 'error');
         }
 
+        const amountInput = document.getElementById('transfer-amount');
+        const amount = amountInput ? amountInput.value : '10';
+
+        // Use the new custom message type with tax
         const msg = {
-            typeUrl: '/cosmos.bank.v1beta1.MsgSend',
+            typeUrl: '/topstar.mytoken.v1.MsgTransferWithTax',
             value: {
                 fromAddress: fromAccount.address,
                 toAddress: toAccount.address,
-                amount: [{ denom: CONFIG.DENOM, amount: '10' }]
+                amount: amount
             }
         };
-        await this.sendTx(fromKey, [msg], `Transfer 10 to ${toAccount.name}`);
+        await this.sendTx(fromKey, [msg], `Taxed Transfer ${amount} to ${toAccount.name}`);
     },
 
     async sendTx(userKey, msgs, memo) {

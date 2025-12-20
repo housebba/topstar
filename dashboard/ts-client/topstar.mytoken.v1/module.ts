@@ -9,10 +9,11 @@ import { Api } from "./rest";
 import { MsgUpdateParams } from "./types/topstar/mytoken/v1/tx";
 import { MsgMint } from "./types/topstar/mytoken/v1/tx";
 import { MsgBurn } from "./types/topstar/mytoken/v1/tx";
+import { MsgTransferWithTax } from "./types/topstar/mytoken/v1/tx";
 
 import { Params as typeParams} from "./types"
 
-export { MsgUpdateParams, MsgMint, MsgBurn };
+export { MsgUpdateParams, MsgMint, MsgBurn, MsgTransferWithTax };
 
 type sendMsgUpdateParamsParams = {
   value: MsgUpdateParams,
@@ -32,6 +33,12 @@ type sendMsgBurnParams = {
   memo?: string
 };
 
+type sendMsgTransferWithTaxParams = {
+  value: MsgTransferWithTax,
+  fee?: StdFee,
+  memo?: string
+};
+
 
 type msgUpdateParamsParams = {
   value: MsgUpdateParams,
@@ -43,6 +50,10 @@ type msgMintParams = {
 
 type msgBurnParams = {
   value: MsgBurn,
+};
+
+type msgTransferWithTaxParams = {
+  value: MsgTransferWithTax,
 };
 
 
@@ -117,6 +128,20 @@ export const txClient = ({ signer, prefix, addr }: TxClientOptions = { addr: "ht
 			}
 		},
 		
+		async sendMsgTransferWithTax({ value, fee, memo }: sendMsgTransferWithTaxParams): Promise<DeliverTxResponse> {
+			if (!signer) {
+					throw new Error('TxClient:sendMsgTransferWithTax: Unable to sign Tx. Signer is not present.')
+			}
+			try {			
+				const { address } = (await signer.getAccounts())[0]; 
+				const signingClient = await SigningStargateClient.connectWithSigner(addr,signer,{registry});
+				let msg = this.msgTransferWithTax({ value: MsgTransferWithTax.fromPartial(value) })
+				return await signingClient.signAndBroadcast(address, [msg], fee ? fee : defaultFee, memo)
+			} catch (e: any) {
+				throw new Error('TxClient:sendMsgTransferWithTax: Could not broadcast Tx: '+ e.message)
+			}
+		},
+		
 		
 		msgUpdateParams({ value }: msgUpdateParamsParams): EncodeObject {
 			try {
@@ -139,6 +164,14 @@ export const txClient = ({ signer, prefix, addr }: TxClientOptions = { addr: "ht
 				return { typeUrl: "/topstar.mytoken.v1.MsgBurn", value: MsgBurn.fromPartial( value ) }  
 			} catch (e: any) {
 				throw new Error('TxClient:MsgBurn: Could not create message: ' + e.message)
+			}
+		},
+		
+		msgTransferWithTax({ value }: msgTransferWithTaxParams): EncodeObject {
+			try {
+				return { typeUrl: "/topstar.mytoken.v1.MsgTransferWithTax", value: MsgTransferWithTax.fromPartial( value ) }  
+			} catch (e: any) {
+				throw new Error('TxClient:MsgTransferWithTax: Could not create message: ' + e.message)
 			}
 		},
 		

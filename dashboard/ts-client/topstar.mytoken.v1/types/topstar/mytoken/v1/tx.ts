@@ -47,6 +47,15 @@ export interface MsgBurn {
 export interface MsgBurnResponse {
 }
 
+export interface MsgTransferWithTax {
+  fromAddress: string;
+  toAddress: string;
+  amount: string;
+}
+
+export interface MsgTransferWithTaxResponse {
+}
+
 function createBaseMsgUpdateParams(): MsgUpdateParams {
   return { authority: "", params: undefined };
 }
@@ -406,6 +415,141 @@ export const MsgBurnResponse: MessageFns<MsgBurnResponse> = {
   },
 };
 
+function createBaseMsgTransferWithTax(): MsgTransferWithTax {
+  return { fromAddress: "", toAddress: "", amount: "" };
+}
+
+export const MsgTransferWithTax: MessageFns<MsgTransferWithTax> = {
+  encode(message: MsgTransferWithTax, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.fromAddress !== "") {
+      writer.uint32(10).string(message.fromAddress);
+    }
+    if (message.toAddress !== "") {
+      writer.uint32(18).string(message.toAddress);
+    }
+    if (message.amount !== "") {
+      writer.uint32(26).string(message.amount);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgTransferWithTax {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseMsgTransferWithTax();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.fromAddress = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.toAddress = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.amount = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MsgTransferWithTax {
+    return {
+      fromAddress: isSet(object.fromAddress) ? globalThis.String(object.fromAddress) : "",
+      toAddress: isSet(object.toAddress) ? globalThis.String(object.toAddress) : "",
+      amount: isSet(object.amount) ? globalThis.String(object.amount) : "",
+    };
+  },
+
+  toJSON(message: MsgTransferWithTax): unknown {
+    const obj: any = {};
+    if (message.fromAddress !== "") {
+      obj.fromAddress = message.fromAddress;
+    }
+    if (message.toAddress !== "") {
+      obj.toAddress = message.toAddress;
+    }
+    if (message.amount !== "") {
+      obj.amount = message.amount;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MsgTransferWithTax>, I>>(base?: I): MsgTransferWithTax {
+    return MsgTransferWithTax.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgTransferWithTax>, I>>(object: I): MsgTransferWithTax {
+    const message = createBaseMsgTransferWithTax();
+    message.fromAddress = object.fromAddress ?? "";
+    message.toAddress = object.toAddress ?? "";
+    message.amount = object.amount ?? "";
+    return message;
+  },
+};
+
+function createBaseMsgTransferWithTaxResponse(): MsgTransferWithTaxResponse {
+  return {};
+}
+
+export const MsgTransferWithTaxResponse: MessageFns<MsgTransferWithTaxResponse> = {
+  encode(_: MsgTransferWithTaxResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): MsgTransferWithTaxResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseMsgTransferWithTaxResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): MsgTransferWithTaxResponse {
+    return {};
+  },
+
+  toJSON(_: MsgTransferWithTaxResponse): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<MsgTransferWithTaxResponse>, I>>(base?: I): MsgTransferWithTaxResponse {
+    return MsgTransferWithTaxResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<MsgTransferWithTaxResponse>, I>>(_: I): MsgTransferWithTaxResponse {
+    const message = createBaseMsgTransferWithTaxResponse();
+    return message;
+  },
+};
+
 /** Msg defines the Msg service. */
 export interface Msg {
   /**
@@ -416,6 +560,7 @@ export interface Msg {
   /** Mint defines a message to mint tokens. */
   Mint(request: MsgMint): Promise<MsgMintResponse>;
   Burn(request: MsgBurn): Promise<MsgBurnResponse>;
+  TransferWithTax(request: MsgTransferWithTax): Promise<MsgTransferWithTaxResponse>;
 }
 
 export const MsgServiceName = "topstar.mytoken.v1.Msg";
@@ -428,6 +573,7 @@ export class MsgClientImpl implements Msg {
     this.UpdateParams = this.UpdateParams.bind(this);
     this.Mint = this.Mint.bind(this);
     this.Burn = this.Burn.bind(this);
+    this.TransferWithTax = this.TransferWithTax.bind(this);
   }
   UpdateParams(request: MsgUpdateParams): Promise<MsgUpdateParamsResponse> {
     const data = MsgUpdateParams.encode(request).finish();
@@ -445,6 +591,12 @@ export class MsgClientImpl implements Msg {
     const data = MsgBurn.encode(request).finish();
     const promise = this.rpc.request(this.service, "Burn", data);
     return promise.then((data) => MsgBurnResponse.decode(new BinaryReader(data)));
+  }
+
+  TransferWithTax(request: MsgTransferWithTax): Promise<MsgTransferWithTaxResponse> {
+    const data = MsgTransferWithTax.encode(request).finish();
+    const promise = this.rpc.request(this.service, "TransferWithTax", data);
+    return promise.then((data) => MsgTransferWithTaxResponse.decode(new BinaryReader(data)));
   }
 }
 

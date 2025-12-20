@@ -12,16 +12,31 @@ export const protobufPackage = "topstar.mytoken.v1";
 /** Params defines the parameters for the module. */
 export interface Params {
   mintDenom: string;
+  /** burn_rate is the percentage of tokens to burn on transfer (e.g., 1 = 1%) */
+  burnRate: number;
+  /** treasury_rate is the percentage of tokens to send to treasury on transfer (e.g., 1 = 1%) */
+  treasuryRate: number;
+  /** treasury_address is the address where treasury tokens are sent */
+  treasuryAddress: string;
 }
 
 function createBaseParams(): Params {
-  return { mintDenom: "" };
+  return { mintDenom: "", burnRate: 0, treasuryRate: 0, treasuryAddress: "" };
 }
 
 export const Params: MessageFns<Params> = {
   encode(message: Params, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.mintDenom !== "") {
       writer.uint32(10).string(message.mintDenom);
+    }
+    if (message.burnRate !== 0) {
+      writer.uint32(16).uint64(message.burnRate);
+    }
+    if (message.treasuryRate !== 0) {
+      writer.uint32(24).uint64(message.treasuryRate);
+    }
+    if (message.treasuryAddress !== "") {
+      writer.uint32(34).string(message.treasuryAddress);
     }
     return writer;
   },
@@ -41,6 +56,30 @@ export const Params: MessageFns<Params> = {
           message.mintDenom = reader.string();
           continue;
         }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.burnRate = longToNumber(reader.uint64());
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.treasuryRate = longToNumber(reader.uint64());
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.treasuryAddress = reader.string();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -51,13 +90,27 @@ export const Params: MessageFns<Params> = {
   },
 
   fromJSON(object: any): Params {
-    return { mintDenom: isSet(object.mintDenom) ? globalThis.String(object.mintDenom) : "" };
+    return {
+      mintDenom: isSet(object.mintDenom) ? globalThis.String(object.mintDenom) : "",
+      burnRate: isSet(object.burnRate) ? globalThis.Number(object.burnRate) : 0,
+      treasuryRate: isSet(object.treasuryRate) ? globalThis.Number(object.treasuryRate) : 0,
+      treasuryAddress: isSet(object.treasuryAddress) ? globalThis.String(object.treasuryAddress) : "",
+    };
   },
 
   toJSON(message: Params): unknown {
     const obj: any = {};
     if (message.mintDenom !== "") {
       obj.mintDenom = message.mintDenom;
+    }
+    if (message.burnRate !== 0) {
+      obj.burnRate = Math.round(message.burnRate);
+    }
+    if (message.treasuryRate !== 0) {
+      obj.treasuryRate = Math.round(message.treasuryRate);
+    }
+    if (message.treasuryAddress !== "") {
+      obj.treasuryAddress = message.treasuryAddress;
     }
     return obj;
   },
@@ -68,6 +121,9 @@ export const Params: MessageFns<Params> = {
   fromPartial<I extends Exact<DeepPartial<Params>, I>>(object: I): Params {
     const message = createBaseParams();
     message.mintDenom = object.mintDenom ?? "";
+    message.burnRate = object.burnRate ?? 0;
+    message.treasuryRate = object.treasuryRate ?? 0;
+    message.treasuryAddress = object.treasuryAddress ?? "";
     return message;
   },
 };
@@ -83,6 +139,17 @@ export type DeepPartial<T> = T extends Builtin ? T
 type KeysOfUnion<T> = T extends T ? keyof T : never;
 export type Exact<P, I extends P> = P extends Builtin ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+
+function longToNumber(int64: { toString(): string }): number {
+  const num = globalThis.Number(int64.toString());
+  if (num > globalThis.Number.MAX_SAFE_INTEGER) {
+    throw new globalThis.Error("Value is larger than Number.MAX_SAFE_INTEGER");
+  }
+  if (num < globalThis.Number.MIN_SAFE_INTEGER) {
+    throw new globalThis.Error("Value is smaller than Number.MIN_SAFE_INTEGER");
+  }
+  return num;
+}
 
 function isSet(value: any): boolean {
   return value !== null && value !== undefined;

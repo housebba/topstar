@@ -12,4 +12,10 @@ message Params {
   option (gogoproto.equal) = true;
 
   string mint_denom = 1;
+  // burn_rate is the percentage of tokens to burn on transfer (e.g., 1 = 1%)
+  uint64 burn_rate = 2;
+  // treasury_rate is the percentage of tokens to send to treasury on transfer (e.g., 1 = 1%)
+  uint64 treasury_rate = 3;
+  // treasury_address is the address where treasury tokens are sent
+  string treasury_address = 4;
 }

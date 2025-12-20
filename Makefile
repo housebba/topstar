@@ -79,11 +79,11 @@ proto-gen:
 	@echo "Generating protobuf files..."
 	@ignite generate proto-go --yes
 
-openapi-gen:
-	@echo "Generating OpenAPI files..."
-	@ignite generate openapi --yes
+ts-gen:
+	@echo "Generating Typescript client..."
+	@ignite generate ts-client --yes --output ./dashboard/ts-client
 
-proto: proto-gen openapi-gen
+proto: proto-gen openapi-gen ts-gen
 
 .PHONY: proto-gen openapi-gen proto
 

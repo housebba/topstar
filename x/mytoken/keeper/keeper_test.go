@@ -31,6 +31,9 @@ func (MockBankKeeper) SendCoinsFromAccountToModule(context.Context, sdk.AccAddre
 func (MockBankKeeper) BurnCoins(context.Context, string, sdk.Coins) error {
 	return nil
 }
+func (MockBankKeeper) SendCoins(context.Context, sdk.AccAddress, sdk.AccAddress, sdk.Coins) error {
+	return nil
+}
 
 type fixture struct {
 	ctx          context.Context
