@@ -7,8 +7,8 @@
     <title>Topstar Testnet Explorer | 실시간 노드 상태</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono&display=swap"
         rel="stylesheet">
-  <script type="module" crossorigin src="/topstar/assets/index-CK5haXak.js"></script>
-  <link rel="stylesheet" crossorigin href="/topstar/assets/index-iHcPExgV.css">
+  <script type="module" crossorigin src="/topstar/assets/index-V2Xv8-4A.js"></script>
+  <link rel="stylesheet" crossorigin href="/topstar/assets/index-DYJ2uFRZ.css">
 </head>
 
 <body>
@@ -63,8 +63,14 @@
                         <span class="amount">0</span>
                     </div>
                     <div class="user-actions">
-                        <button data-action="mint" data-user="alice" class="btn-mint">Mint 100</button>
-                        <button data-action="burn" data-user="alice" class="btn-burn">Burn 50</button>
+                        <div class="input-group">
+                            <input type="number" id="mint-amount-alice" value="100" min="1">
+                            <button data-action="mint" data-user="alice" class="btn-mint">Mint</button>
+                        </div>
+                        <div class="input-group">
+                            <input type="number" id="burn-amount-alice" value="50" min="1">
+                            <button data-action="burn" data-user="alice" class="btn-burn">Burn</button>
+                        </div>
                     </div>
                 </div>
 
@@ -73,8 +79,12 @@
                     <div class="arrow-container">
                         <div class="arrow"></div>
                     </div>
-                    <button data-action="transfer" data-from="alice" data-to="bob" class="btn-transfer">Send 10 to
-                        Bob</button>
+                    <div class="transfer-controls">
+                        <div class="tax-info">1% Burn + 1% Treasury Tax Applied</div>
+                        <input type="number" id="transfer-amount" value="10" min="1" placeholder="Amount">
+                        <button data-action="transfer" data-from="alice" data-to="bob" class="btn-transfer">Send to
+                            Bob</button>
+                    </div>
                 </div>
 
                 <!-- Bob Card -->
